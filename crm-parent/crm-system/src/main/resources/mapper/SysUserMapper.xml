@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.system.mapper.SysUserMapper">
+
+    <resultMap id="UserResultMap" type="com.crm.system.entity.SysUser">
+        <id column="id" property="id"/>
+        <result column="dept_name" property="deptName"/>
+    </resultMap>
+
+    <select id="selectPageWithDept" resultMap="UserResultMap">
+        SELECT u.*, d.name AS dept_name
+        FROM sys_user u
+        LEFT JOIN sys_dept d ON u.dept_id = d.id
+        <where>
+            u.deleted_at IS NULL
+            <if test="keywords != null and keywords != ''">
+                AND (u.real_name LIKE concat('%', #{keywords}, '%')
+                OR u.username LIKE concat('%', #{keywords}, '%')
+                OR u.phone LIKE concat('%', #{keywords}, '%'))
+            </if>
+            <if test="deptId != null">
+                AND u.dept_id = #{deptId}
+            </if>
+            <if test="status != null">
+                AND u.status = #{status}
+            </if>
+        </where>
+        ORDER BY u.created_at DESC
+    </select>
+
+    <select id="selectByUsername" resultType="com.crm.system.entity.SysUser">
+        SELECT * FROM sys_user WHERE username = #{username} AND deleted_at IS NULL
+    </select>
+
+    <select id="selectByDeptId" resultType="com.crm.system.entity.SysUser">
+        SELECT * FROM sys_user WHERE dept_id = #{deptId} AND deleted_at IS NULL AND status = 1
+    </select>
+
+</mapper>
