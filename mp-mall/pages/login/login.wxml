@@ -1,0 +1,15 @@
+<view class="login-page">
+  <view class="logo-area">
+    <view class="logo-placeholder">CRM</view>
+    <text class="title">CRM商城</text>
+    <text class="subtitle">企业级客户管理与商城一体化服务</text>
+  </view>
+
+  <view class="login-btn {{canLogin ? '' : 'disabled'}}" bindtap="handleLogin">
+    <text>微信一键登录</text>
+  </view>
+
+  <view class="agreement">
+    <text>登录即表示同意《用户协议》和《隐私政策》</text>
+  </view>
+</view>

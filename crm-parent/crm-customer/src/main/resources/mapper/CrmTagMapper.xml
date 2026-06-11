@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.customer.mapper.CrmTagMapper">
+
+    <select id="selectByCustomerId" resultType="com.crm.customer.entity.CrmTag">
+        SELECT t.* FROM crm_tag t
+        INNER JOIN crm_customer_tag ct ON t.id = ct.tag_id
+        WHERE ct.customer_id = #{customerId}
+        ORDER BY t.id ASC
+    </select>
+
+</mapper>

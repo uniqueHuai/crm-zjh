@@ -13,6 +13,6 @@ export function getUserInfoApi(): Promise<R<UserInfo>> {
   return request.get('/auth/user-info')
 }
 
-export function updatePasswordApi(data: { oldPassword: string; newPassword: string }): Promise<R<null>> {
+export function updatePasswordApi(data: { oldPassword: string; newPassword: string; confirmPassword: string }): Promise<R<null>> {
   return request.put('/auth/password', data)
 }

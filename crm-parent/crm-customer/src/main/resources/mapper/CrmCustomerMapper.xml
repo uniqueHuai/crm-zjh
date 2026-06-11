@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.customer.mapper.CrmCustomerMapper">
+
+    <resultMap id="CustomerResultMap" type="com.crm.customer.entity.CrmCustomer">
+        <id column="id" property="id"/>
+        <result column="level_name" property="levelName"/>
+        <result column="owner_name" property="ownerName"/>
+        <result column="source_channel_name" property="sourceChannelName"/>
+    </resultMap>
+
+    <select id="selectPageWithCondition" resultMap="CustomerResultMap">
+        SELECT c.*, l.name AS level_name, u.real_name AS owner_name,
+               di.item_value AS source_channel_name
+        FROM crm_customer c
+        LEFT JOIN crm_customer_level l ON c.level_id = l.id
+        LEFT JOIN sys_user u ON c.owner_id = u.id
+        LEFT JOIN sys_dict_item di ON di.type_code = 'lead_source' AND di.item_code = c.source_channel AND di.deleted_at IS NULL
+        <where>
+            c.deleted_at IS NULL
+            <if test="keywords != null and keywords != ''">
+                AND (c.name LIKE '%' || #{keywords} || '%'
+                OR c.phone LIKE '%' || #{keywords} || '%'
+                OR c.company LIKE '%' || #{keywords} || '%')
+            </if>
+            <if test="levelId != null">AND c.level_id = #{levelId}</if>
+            <if test="ownerId != null">AND c.owner_id = #{ownerId}</if>
+            <if test="sourceChannel != null and sourceChannel != ''">AND c.source_channel = #{sourceChannel}</if>
+            <if test="province != null and province != ''">AND c.province = #{province}</if>
+            <if test="city != null and city != ''">AND c.city = #{city}</if>
+            <if test="isSleeping != null and isSleeping == true">
+                AND c.last_contact_at IS NOT NULL
+                AND c.last_contact_at &lt; NOW() - INTERVAL '90 days'
+            </if>
+            <if test="startDate != null and startDate != ''">AND c.created_at >= #{startDate}::timestamp</if>
+            <if test="endDate != null and endDate != ''">AND c.created_at &lt;= #{endDate}::timestamp</if>
+        </where>
+        ORDER BY c.last_contact_at DESC NULLS LAST, c.created_at DESC
+    </select>
+
+    <select id="selectPageBySegment" resultMap="CustomerResultMap">
+        SELECT c.*, l.name AS level_name, u.real_name AS owner_name,
+               di.item_value AS source_channel_name
+        FROM crm_customer c
+        INNER JOIN crm_segment_member sm ON c.id = sm.customer_id
+        LEFT JOIN crm_customer_level l ON c.level_id = l.id
+        LEFT JOIN sys_user u ON c.owner_id = u.id
+        LEFT JOIN sys_dict_item di ON di.type_code = 'lead_source' AND di.item_code = c.source_channel AND di.deleted_at IS NULL
+        WHERE sm.segment_id = #{segmentId} AND c.deleted_at IS NULL
+        ORDER BY c.created_at DESC
+    </select>
+
+    <select id="selectPhoneByCustomerIds" resultType="string">
+        SELECT phone FROM crm_customer WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+        AND deleted_at IS NULL AND phone IS NOT NULL
+    </select>
+
+</mapper>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.sales.mapper.CrmContractMapper">
+
+    <resultMap id="ContractResultMap" type="com.crm.sales.entity.CrmContract">
+        <id column="id" property="id"/>
+        <result column="customer_name" property="customerName"/>
+    </resultMap>
+
+    <select id="selectPageWithCondition" resultMap="ContractResultMap">
+        SELECT ct.*, c.name AS customer_name
+        FROM crm_contract ct
+        LEFT JOIN crm_customer c ON ct.customer_id = c.id AND c.deleted_at IS NULL
+        <where>
+            ct.deleted_at IS NULL
+            <if test="keywords != null and keywords != ''">
+                AND (ct.title LIKE '%' || #{keywords} || '%'
+                OR ct.contract_no LIKE '%' || #{keywords} || '%'
+                OR c.name LIKE '%' || #{keywords} || '%')
+            </if>
+            <if test="customerId != null">AND ct.customer_id = #{customerId}</if>
+            <if test="status != null and status != ''">AND ct.status = #{status}</if>
+            <if test="startDate != null and startDate != ''">AND ct.created_at >= #{startDate}::timestamp</if>
+            <if test="endDate != null and endDate != ''">AND ct.created_at &lt;= #{endDate}::timestamp</if>
+        </where>
+        ORDER BY ct.created_at DESC
+    </select>
+
+</mapper>

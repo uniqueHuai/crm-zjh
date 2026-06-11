@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.system.mapper.SysRoleMapper">
+
+    <resultMap id="RoleResultMap" type="com.crm.system.entity.SysRole">
+        <id column="id" property="id"/>
+    </resultMap>
+
+    <select id="selectPageWithCondition" resultMap="RoleResultMap">
+        SELECT * FROM sys_role
+        <where>
+            deleted_at IS NULL
+            <if test="keywords != null and keywords != ''">
+                AND (name LIKE '%' || #{keywords} || '%'
+                OR role_code LIKE '%' || #{keywords} || '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY sort_order ASC, created_at DESC
+    </select>
+
+    <select id="selectByUserId" resultType="com.crm.system.entity.SysRole">
+        SELECT r.* FROM sys_role r
+        INNER JOIN sys_user_role ur ON r.id = ur.role_id
+        WHERE ur.user_id = #{userId} AND r.deleted_at IS NULL AND r.status = 1
+    </select>
+
+    <select id="selectMenuIdsByRoleId" resultType="long">
+        SELECT menu_id FROM sys_role_menu WHERE role_id = #{roleId}
+    </select>
+
+    <select id="selectDeptIdsByRoleId" resultType="long">
+        SELECT dept_id FROM sys_role_dept WHERE role_id = #{roleId}
+    </select>
+
+</mapper>

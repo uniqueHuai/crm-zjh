@@ -1,0 +1,35 @@
+<view class="page">
+  <view class="tabs">
+    <view class="tab {{tab === 'available' ? 'active' : ''}}" bindtap="switchTab" data-tab="available">
+      <text>可领取</text>
+    </view>
+    <view class="tab {{tab === 'my' ? 'active' : ''}}" bindtap="switchTab" data-tab="my">
+      <text>我的优惠券</text>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+
+  <view wx:elif="{{coupons.length === 0}}" class="empty">
+    <text wx:if="{{tab === 'available'}}">暂无可领取优惠券</text>
+    <text wx:else>暂无优惠券</text>
+  </view>
+
+  <scroll-view wx:else class="coupon-list" scroll-y>
+    <view class="coupon-card {{tab === 'my' && item.status === 1 ? 'used' : ''}}" wx:for="{{coupons}}" wx:key="id">
+      <view class="coupon-left">
+        <text class="coupon-amount">¥{{item.discount || item.amount}}</text>
+        <text class="coupon-condition" wx:if="{{item.minAmount}}">满{{item.minAmount}}可用</text>
+        <text class="coupon-condition" wx:else>无门槛</text>
+      </view>
+      <view class="coupon-right">
+        <text class="coupon-name">{{item.name}}</text>
+        <text class="coupon-desc" wx:if="{{item.description}}">{{item.description}}</text>
+        <text class="coupon-expire" wx:if="{{item.expireTime}}">有效期至: {{item.expireTime}}</text>
+        <button class="claim-btn" wx:if="{{tab === 'available'}}" bindtap="claimCoupon" data-id="{{item.id}}">领取</button>
+        <text class="used-tag" wx:elif="{{item.status === 1}}">已使用</text>
+        <text class="used-tag expired" wx:elif="{{item.status === 2}}">已过期</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

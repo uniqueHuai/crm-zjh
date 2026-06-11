@@ -1,0 +1,39 @@
+<view class="chat-page">
+  <scroll-view class="message-list" scroll-y scroll-with-animation upper-threshold="50" scroll-into-view="{{scrollToId}}">
+    <block wx:for="{{messages}}" wx:key="index">
+      <view class="message-item {{item.role === 'assistant' ? 'left' : 'right'}}" id="msg-{{index}}">
+        <view class="avatar {{item.role}}">
+          <image src="/images/default-avatar.png" mode="aspectFill" />
+        </view>
+        <view class="bubble {{item.role}}">
+          <text>{{item.content}}</text>
+        </view>
+      </view>
+    </block>
+
+    <view wx:if="{{loading}}" class="message-item left" id="msg-loading">
+      <view class="avatar assistant">
+        <image src="/images/default-avatar.png" mode="aspectFill" />
+      </view>
+      <view class="bubble assistant loading">
+        <text>...</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{showQuickQuestions}}" class="quick-questions">
+    <view class="quick-title">常见问题</view>
+    <view class="quick-list">
+      <view class="quick-item" wx:for="{{quickQuestions}}" wx:key="index" bindtap="sendQuickQuestion" data-question="{{item}}">
+        <text>{{item}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="input-area">
+    <view class="input-wrapper">
+      <input class="input" type="text" placeholder="输入您的问题..." value="{{inputMessage}}" bindinput="onInputChange" confirm-type="send" bindconfirm="sendMessage" />
+      <view class="send-btn {{hasInput ? 'active' : ''}}" bindtap="sendMessage">发送</view>
+    </view>
+  </view>
+</view>

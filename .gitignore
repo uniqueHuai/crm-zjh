@@ -1,35 +1,68 @@
-# Java
+# === Java ===
 *.class
 *.jar
 *.war
+*.nar
 target/
-!.mvn/wrapper/maven-wrapper.jar
 
-# Node
+# === Maven ===
+!.mvn/wrapper/maven-wrapper.jar
+*.versionsBackup
+
+# === Node ===
 node_modules/
 dist/
 *.tsbuildinfo
 
-# IDE
+# === IDE ===
 .idea/
 *.iml
 .vscode/
 *.swp
 *.swo
+*~
 
-# OS
+# === OS ===
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Env
+# === Environment ===
+.env
 .env.local
 .env.*.local
+.env.prod
+*.pem
+*.key
 
-# Logs
+# === Logs ===
 logs/
 *.log
 
-# Uploads
+# === Uploads / Temp ===
 upload/
+uploads/
+temp/
+*.tmp
+
+# === Test Reports ===
+test-reports/
+
+# === Generated docs ===
 API接口文档.md
 功能清单与技术框架.md
+DESIGN.md
+API测试报告.md
+
+# === Playwright ===
+.playwright-mcp/
+
+# === Claude Code ===
+.claude/settings.local.json
+
+# === Packages ===
+package-lock.json
+
+# === Temporary test scripts ===
+mini-program-test.cjs

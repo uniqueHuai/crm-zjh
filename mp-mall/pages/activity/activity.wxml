@@ -1,0 +1,42 @@
+<view class="page">
+  <view class="page-header">活动中心</view>
+
+  <view wx:if="{{loading && activities.length === 0}}" class="loading">加载中...</view>
+  <view wx:elif="{{activities.length === 0}}" class="empty">暂无活动</view>
+
+  <view wx:else class="content">
+    <scroll-view class="activity-tabs" scroll-x>
+      <view class="tab {{activeTab === index ? 'active' : ''}}" wx:for="{{activities}}" wx:key="id" bindtap="selectActivity" data-index="{{index}}">
+        <text>{{item.name || item.activityName}}</text>
+      </view>
+    </scroll-view>
+
+    <view wx:if="{{loading}}" class="loading">加载中...</view>
+    <view wx:elif="{{products.length === 0}}" class="empty">该活动暂无商品</view>
+
+    <scroll-view wx:else class="product-list" scroll-y>
+      <view class="product-card" wx:for="{{products}}" wx:key="id">
+        <image class="product-img" src="{{item.coverImage || '/images/default-product.png'}}" mode="aspectFill" bindtap="goProduct" data-id="{{item.id}}"></image>
+        <view class="product-info">
+          <text class="product-name">{{item.name}}</text>
+          <view class="price-row">
+            <text class="activity-price">¥{{item.activityPrice || item.price}}</text>
+            <text class="original-price" wx:if="{{item.standardPrice && item.standardPrice > item.activityPrice}}">¥{{item.standardPrice}}</text>
+          </view>
+          <view class="stock-row">
+            <text class="stock" wx:if="{{item.stock !== undefined}}">库存: {{item.stock}}</text>
+            <text class="sold" wx:if="{{item.soldStock !== undefined}}">已售: {{item.soldStock}}</text>
+          </view>
+          <view class="action-row">
+            <button class="buy-btn" wx:if="{{selectedActivity && (selectedActivity.type === 'seckill' || selectedActivity.type === 1)}}" bindtap="seckillBuy" data-sku-id="{{item.skuId}}">
+              秒杀
+            </button>
+            <button class="group-btn" wx:elif="{{selectedActivity && (selectedActivity.type === 'group' || selectedActivity.type === 2)}}" bindtap="groupBuy" data-sku-id="{{item.skuId}}">
+              拼团
+            </button>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

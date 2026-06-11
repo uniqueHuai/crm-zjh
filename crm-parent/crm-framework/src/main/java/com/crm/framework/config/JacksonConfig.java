@@ -1,12 +1,12 @@
 package com.crm.framework.config;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -32,11 +33,18 @@ public class JacksonConfig {
 
             builder.modules(module);
 
-            // 时间序列化
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            // JSR310 时间序列化
+            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
             builder.simpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            builder.serializerByType(LocalDateTime.class, new LocalDateTimeSerializer(formatter));
-            builder.deserializerByType(LocalDateTime.class, new LocalDateTimeDeserializer(formatter));
+            // LocalDateTime -> yyyy-MM-dd HH:mm:ss
+            builder.serializerByType(LocalDateTime.class, new LocalDateTimeSerializer(dtf));
+            builder.deserializerByType(LocalDateTime.class, new LocalDateTimeDeserializer(dtf));
+            // LocalDate -> yyyy-MM-dd
+            builder.serializerByType(LocalDate.class, new LocalDateSerializer(df));
+            builder.deserializerByType(LocalDate.class, new LocalDateDeserializer(df));
+            // 注册 JSR310 模块（兜底其他类型如 LocalTime、ZonedDateTime）
+            builder.modulesToInstall(JavaTimeModule.class);
 
             // 忽略未知字段
             builder.failOnUnknownProperties(false);

@@ -15,6 +15,8 @@ import com.crm.system.entity.SysUser;
 import com.crm.system.mapper.SysUserMapper;
 import com.crm.system.service.ISysUserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -33,7 +35,9 @@ import java.util.stream.Collectors;
 public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements ISysUserService {
 
     private final SysUserMapper userMapper;
-    private final AuthenticationManager authenticationManager;
+    @Lazy
+    @Autowired
+    private AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
     private final RedisTemplate<String, Object> redisTemplate;
 
@@ -54,15 +58,17 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         String token = jwtUtils.createToken(claims);
         String refreshToken = jwtUtils.createRefreshToken(loginUser.getUserId());
 
-        // 4. 缓存登录用户
-        String cacheKey = Constants.CACHE_TOKEN + token.hashCode();
-        redisTemplate.opsForValue().set(cacheKey, loginUser, jwtUtils.getExpire(), TimeUnit.SECONDS);
-
         // 5. 更新最后登录时间
+        String nowStr = java.time.LocalDateTime.now().toString().replace('T', ' ');
+        loginUser.setLastLoginAt(nowStr);
         lambdaUpdate()
                 .eq(SysUser::getId, loginUser.getUserId())
                 .set(SysUser::getLastLoginAt, java.time.LocalDateTime.now())
                 .update();
+
+        // 4. 缓存登录用户（在更新 lastLoginAt 之后缓存，确保缓存是最新值）
+        String cacheKey = Constants.CACHE_TOKEN + token.hashCode();
+        redisTemplate.opsForValue().set(cacheKey, loginUser, jwtUtils.getExpire(), TimeUnit.SECONDS);
 
         return LoginResponse.builder()
                 .accessToken(token)
@@ -73,6 +79,12 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                         .userId(loginUser.getUserId())
                         .username(loginUser.getUsername())
                         .realName(loginUser.getRealName())
+                        .avatar(loginUser.getAvatar())
+                        .phone(loginUser.getPhone())
+                        .email(loginUser.getEmail())
+                        .deptId(loginUser.getDeptId())
+                        .deptName(loginUser.getDeptName())
+                        .lastLoginAt(nowStr)
                         .roles(loginUser.getRoles().stream().toList())
                         .permissions(loginUser.getPermissions())
                         .build())
@@ -92,6 +104,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean createUser(SysUser user) {
+        if (user.getPassword() == null || user.getPassword().isEmpty()) {
+            throw new BizException(400001, "密码不能为空");
+        }
         long count = lambdaQuery().eq(SysUser::getUsername, user.getUsername()).count();
         if (count > 0) {
             throw new BizException(400002, "用户名已存在");

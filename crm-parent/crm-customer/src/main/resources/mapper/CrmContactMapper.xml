@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.customer.mapper.CrmContactMapper">
+
+    <resultMap id="ContactResultMap" type="com.crm.customer.entity.CrmContact">
+        <id column="id" property="id"/>
+        <result column="customer_name" property="customerName"/>
+    </resultMap>
+
+    <select id="selectPageWithCondition" resultMap="ContactResultMap">
+        SELECT ct.*, c.name AS customer_name
+        FROM crm_contact ct
+        LEFT JOIN crm_customer c ON ct.customer_id = c.id AND c.deleted_at IS NULL
+        <where>
+            ct.deleted_at IS NULL
+            <if test="keywords != null and keywords != ''">
+                AND (ct.name LIKE '%' || #{keywords} || '%'
+                OR ct.phone LIKE '%' || #{keywords} || '%')
+            </if>
+            <if test="customerId != null">AND ct.customer_id = #{customerId}</if>
+            <if test="isDecisionMaker != null">AND ct.is_decision_maker = #{isDecisionMaker}::boolean</if>
+        </where>
+        ORDER BY ct.sort_order ASC NULLS LAST, ct.created_at DESC
+    </select>
+
+</mapper>

@@ -28,6 +28,7 @@
         <module>crm-mall</module>
         <module>crm-collaboration</module>
         <module>crm-report</module>
+        <module>crm-ai</module>
         <module>crm-admin</module>
     </modules>
 
@@ -50,6 +51,9 @@
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <redisson.version>3.28.0</redisson.version>
         <jackson.version>2.17.1</jackson.version>
+        <minio.version>8.5.12</minio.version>
+        <poi.version>4.1.2</poi.version>
+        <pdfbox.version>2.0.27</pdfbox.version>
     </properties>
 
     <dependencyManagement>
@@ -95,6 +99,11 @@
                 <artifactId>crm-report</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.crm</groupId>
+                <artifactId>crm-ai</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- MyBatis-Plus -->
             <dependency>
@@ -102,12 +111,6 @@
                 <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
                 <version>${mybatis-plus.version}</version>
             </dependency>
-            <dependency>
-                <groupId>com.baomidou</groupId>
-                <artifactId>mybatis-plus-jsqlparser-4.9</artifactId>
-                <version>${mybatis-plus.version}</version>
-            </dependency>
-
             <!-- 多数据源 -->
             <dependency>
                 <groupId>com.baomidou</groupId>
@@ -161,23 +164,39 @@
                 <artifactId>redisson-spring-boot-starter</artifactId>
                 <version>${redisson.version}</version>
             </dependency>
+
+            <!-- Apache POI (Word) -->
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi-ooxml</artifactId>
+                <version>${poi.version}</version>
+            </dependency>
+
+            <!-- Apache PDFBox -->
+            <dependency>
+                <groupId>org.apache.pdfbox</groupId>
+                <artifactId>pdfbox</artifactId>
+                <version>${pdfbox.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
-        </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <excludes>
+                            <exclude>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
 </project>

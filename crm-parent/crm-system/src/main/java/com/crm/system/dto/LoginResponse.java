@@ -41,8 +41,11 @@ public class LoginResponse {
         private String username;
         private String realName;
         private String avatar;
+        private String phone;
+        private String email;
         private Long deptId;
         private String deptName;
+        private String lastLoginAt;
         private List<String> roles;
         private Set<String> permissions;
     }

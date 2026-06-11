@@ -1,0 +1,126 @@
+/* ======== CRM Layout Mixins ======== */
+
+@mixin page-container {
+  padding: var(--crm-space-lg);
+  background: var(--crm-bg-white);
+  border-radius: var(--crm-radius-lg);
+  box-shadow: var(--crm-shadow-sm);
+}
+
+@mixin page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--crm-space-lg);
+  h3, .title {
+    margin: 0;
+    font-size: var(--crm-font-size-xl);
+    font-weight: 600;
+    color: var(--crm-text-primary);
+  }
+  .subtitle {
+    font-size: var(--crm-font-size-sm);
+    color: var(--crm-text-secondary);
+    margin-top: 2px;
+  }
+}
+
+@mixin card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--crm-font-size-base);
+  font-weight: 600;
+  color: var(--crm-text-primary);
+}
+
+@mixin search-form {
+  padding: var(--crm-space-lg);
+  background: var(--crm-bg-white);
+  border-radius: var(--crm-radius-lg);
+  box-shadow: var(--crm-shadow-sm);
+  margin-bottom: var(--crm-space-lg);
+}
+
+@mixin table-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--crm-space-base);
+  .left {
+    display: flex;
+    gap: var(--crm-space-sm);
+    align-items: center;
+  }
+  .right {
+    display: flex;
+    gap: var(--crm-space-sm);
+    align-items: center;
+  }
+}
+
+@mixin stat-card {
+  text-align: center;
+  padding: var(--crm-space-lg) 0;
+  .stat-value {
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .stat-label {
+    font-size: var(--crm-font-size-sm);
+    color: var(--crm-text-secondary);
+    margin-top: var(--crm-space-sm);
+  }
+  .stat-trend {
+    font-size: var(--crm-font-size-xs);
+    margin-top: var(--crm-space-xs);
+    &.up { color: var(--crm-success); }
+    &.down { color: var(--crm-danger); }
+  }
+}
+
+@mixin detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--crm-space-base);
+  .detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    .label {
+      font-size: var(--crm-font-size-sm);
+      color: var(--crm-text-secondary);
+    }
+    .value {
+      font-size: var(--crm-font-size-base);
+      color: var(--crm-text-primary);
+    }
+  }
+}
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin scrollbar {
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+  }
+}

@@ -1,0 +1,85 @@
+.page {
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding: 20rpx;
+}
+
+.form-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 10rpx 30rpx;
+  margin-bottom: 40rpx;
+}
+
+.form-item {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+  min-height: 44rpx;
+}
+
+.form-item:last-child {
+  border-bottom: none;
+}
+
+.form-row {
+  display: flex;
+  gap: 20rpx;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.form-label {
+  font-size: 28rpx;
+  color: #333;
+  width: 140rpx;
+  flex-shrink: 0;
+}
+
+.form-input {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+  text-align: right;
+  height: 44rpx;
+  line-height: 44rpx;
+}
+
+.form-textarea {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+  height: 80rpx;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.switch-row {
+  justify-content: space-between;
+}
+
+.switch-row .form-label {
+  width: auto;
+}
+
+.btn-area {
+  padding: 0 20rpx;
+}
+
+.btn-primary {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: linear-gradient(135deg, #1890ff, #096dd9);
+  color: #fff;
+  border-radius: 44rpx;
+  text-align: center;
+  font-size: 32rpx;
+}
+
+.btn-primary:active {
+  opacity: 0.8;
+}

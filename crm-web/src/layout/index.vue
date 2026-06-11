@@ -4,7 +4,11 @@
     <div class="app-main" :class="{ collapsed: sidebarCollapsed }">
       <Navbar @toggle-sidebar="toggleSidebar" />
       <div class="app-content">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
       </div>
     </div>
   </div>
@@ -26,21 +30,23 @@ const toggleSidebar = () => {
   display: flex;
   height: 100vh;
   overflow: hidden;
+  background: var(--crm-bg);
 }
 .app-main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-left: 220px;
-  transition: margin-left 0.3s;
+  margin-left: var(--crm-sidebar-width);
+  transition: margin-left var(--crm-transition-base);
+  min-width: 0;
   &.collapsed {
-    margin-left: 64px;
+    margin-left: var(--crm-sidebar-collapsed-width);
   }
 }
 .app-content {
   flex: 1;
-  padding: 20px;
+  padding: var(--crm-space-lg);
   overflow-y: auto;
-  background: #f0f2f5;
+  background: var(--crm-bg);
 }
 </style>

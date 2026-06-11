@@ -1,0 +1,38 @@
+<view wx:if="{{loading}}" class="loading">加载中...</view>
+
+<view wx:else class="page">
+  <swiper class="product-swiper" autoplay circular>
+    <swiper-item wx:for="{{product.images || [product.coverImage]}}" wx:key="*this">
+      <image class="product-img" src="{{item || '/images/default-product.png'}}" mode="aspectFill"></image>
+    </swiper-item>
+  </swiper>
+
+  <view class="info-section card">
+    <text class="price">¥{{currentSku ? currentSku.price : product.standardPrice}}</text>
+    <text class="original-price" wx:if="{{currentSku && currentSku.originalPrice}}">¥{{currentSku.originalPrice}}</text>
+    <text class="product-name">{{product.name}}</text>
+    <text class="product-desc" wx:if="{{product.description}}">{{product.description}}</text>
+  </view>
+
+  <view class="card">
+    <view class="sku-row" bindtap="selectSku" data-id="{{item.id}}" wx:for="{{skus}}" wx:key="id">
+      <text class="sku-label">{{item.name || item.skuName || '默认规格'}}</text>
+      <text class="price-small price">¥{{item.price}}</text>
+      <text class="stock" wx:if="{{item.stock !== undefined}}">库存: {{item.stock}}</text>
+    </view>
+  </view>
+
+  <view class="card qty-row">
+    <text class="qty-label">数量</text>
+    <view class="qty-control">
+      <text class="qty-btn" bindtap="changeQty" data-type="minus">-</text>
+      <text class="qty-value">{{quantity}}</text>
+      <text class="qty-btn" bindtap="changeQty" data-type="plus">+</text>
+    </view>
+  </view>
+
+  <view class="bottom-bar">
+    <view class="bar-btn cart-btn" bindtap="addToCart">加入购物车</view>
+    <view class="bar-btn buy-btn" bindtap="buyNow">立即购买</view>
+  </view>
+</view>

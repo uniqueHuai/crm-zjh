@@ -1,0 +1,57 @@
+<view class="page">
+  <view class="profile-section" wx:if="{{profile}}">
+    <view class="summary-row">
+      <view class="summary-item">
+        <text class="summary-num">¥{{profile.totalCommission || 0}}</text>
+        <text class="summary-label">累计佣金</text>
+      </view>
+      <view class="summary-item">
+        <text class="summary-num">¥{{profile.settledCommission || 0}}</text>
+        <text class="summary-label">已结算</text>
+      </view>
+      <view class="summary-item">
+        <text class="summary-num">{{profile.teamCount || 0}}</text>
+        <text class="summary-label">团队人数</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="tabs">
+    <view class="tab {{tab === 'team' ? 'active' : ''}}" bindtap="switchTab" data-tab="team">
+      <text>我的团队</text>
+    </view>
+    <view class="tab {{tab === 'commission' ? 'active' : ''}}" bindtap="switchTab" data-tab="commission">
+      <text>佣金明细</text>
+    </view>
+  </view>
+
+  <view wx:if="{{tab === 'team'}}">
+    <view wx:if="{{team.length === 0}}" class="empty">暂无团队成员</view>
+    <view wx:else class="member-list">
+      <view class="member-item" wx:for="{{team}}" wx:key="id">
+        <text class="member-name">{{item.name || item.nickname || ('用户' + item.id)}}</text>
+        <text class="member-time" wx:if="{{item.createdAt}}">{{item.createdAt}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{tab === 'commission'}}">
+    <view wx:if="{{commission.length === 0}}" class="empty">暂无佣金记录</view>
+    <view wx:else class="commission-list">
+      <view class="commission-item" wx:for="{{commission}}" wx:key="id">
+        <view class="commission-info">
+          <text class="commission-order">订单: {{item.orderNo || '--'}}</text>
+          <text class="commission-time" wx:if="{{item.createdAt}}">{{item.createdAt}}</text>
+        </view>
+        <view class="commission-right">
+          <text class="commission-amount">¥{{item.amount}}</text>
+          <text class="commission-status {{item.status}}">{{item.statusText}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="bind-section" wx:if="{{!profile || !profile.referrerId}}">
+    <button class="bind-btn" bindtap="bindReferral">绑定推荐人</button>
+  </view>
+</view>

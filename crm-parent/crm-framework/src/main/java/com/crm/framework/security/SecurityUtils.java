@@ -5,6 +5,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.util.Set;
+
 public class SecurityUtils {
 
     private static final BCryptPasswordEncoder ENCODER = new BCryptPasswordEncoder();

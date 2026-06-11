@@ -4,9 +4,9 @@
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/crm_db?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&stringtype=unspecified
+    url: jdbc:postgresql://localhost:5432/crm-db?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&stringtype=unspecified&connectionTimeZone=Asia/Shanghai
     username: postgres
-    password: postgres
+    password: 123456
 
   data:
     redis:

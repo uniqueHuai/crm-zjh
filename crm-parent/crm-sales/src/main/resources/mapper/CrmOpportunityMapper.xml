@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.sales.mapper.CrmOpportunityMapper">
+
+    <resultMap id="OpportunityResultMap" type="com.crm.sales.entity.CrmOpportunity">
+        <id column="id" property="id"/>
+        <result column="customer_name" property="customerName"/>
+        <result column="stage_name" property="stageName"/>
+        <result column="owner_name" property="ownerName"/>
+    </resultMap>
+
+    <select id="selectPageWithCondition" resultMap="OpportunityResultMap">
+        SELECT o.*, c.name AS customer_name, s.name AS stage_name, s.probability, u.real_name AS owner_name
+        FROM crm_opportunity o
+        LEFT JOIN crm_customer c ON o.customer_id = c.id AND c.deleted_at IS NULL
+        LEFT JOIN crm_opportunity_stage s ON o.stage_id = s.id
+        LEFT JOIN sys_user u ON o.owner_id = u.id
+        <where>
+            o.deleted_at IS NULL
+            <if test="keywords != null and keywords != ''">
+                AND (o.name LIKE '%' || #{keywords} || '%'
+                OR c.name LIKE '%' || #{keywords} || '%')
+            </if>
+            <if test="stageId != null">AND o.stage_id = #{stageId}</if>
+            <if test="customerId != null">AND o.customer_id = #{customerId}</if>
+            <if test="ownerId != null">AND o.owner_id = #{ownerId}</if>
+        </where>
+        ORDER BY o.created_at DESC
+    </select>
+
+</mapper>

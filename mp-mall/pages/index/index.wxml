@@ -1,0 +1,71 @@
+<view class="page">
+  <block wx:for="{{modules}}" wx:key="type">
+    <!-- 搜索栏 -->
+    <view wx:if="{{item.type === 'search' && item.visible !== false}}" class="search-bar" bindtap="goSearch">
+      <text class="search-placeholder">{{item.props.placeholder || '搜索商品'}}</text>
+    </view>
+
+    <!-- 公告栏 -->
+    <view wx:elif="{{item.type === 'notice' && item.visible !== false && notice}}" class="notice-bar" bindtap="goNotice">
+      <text class="notice-icon">📢</text>
+      <text class="notice-text">{{notice.text}}</text>
+    </view>
+
+    <!-- Banner 轮播 -->
+    <swiper wx:elif="{{item.type === 'banner' && item.visible !== false}}" class="banner" autoplay circular indicator-dots>
+      <swiper-item wx:for="{{banners}}" wx:key="id">
+        <image class="banner-img" src="{{item.image}}" mode="aspectFill"></image>
+      </swiper-item>
+    </swiper>
+
+    <!-- 分类导航 -->
+    <view wx:elif="{{item.type === 'category_grid' && item.visible !== false}}" class="section">
+      <view wx:if="{{item.props.title}}" class="section-header">
+        <text class="section-title">{{item.props.title}}</text>
+      </view>
+      <view class="category-grid">
+        <view class="category-item" wx:for="{{categories}}" wx:key="id" bindtap="goCategory">
+          <image class="category-icon" src="{{item.icon || ''}}" mode="aspectFill" wx:if="{{item.icon}}"></image>
+          <view class="category-icon-placeholder" wx:else>{{item.name ? item.name[0] : '类'}}</view>
+          <text class="category-name">{{item.name}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 活动列表 -->
+    <view wx:elif="{{item.type === 'activity_list' && item.visible !== false && activities.length > 0}}" class="section">
+      <view class="section-header">
+        <text class="section-title">{{item.props.title || '限时活动'}}</text>
+      </view>
+      <scroll-view class="activity-scroll" scroll-x>
+        <view class="activity-card" wx:for="{{activities}}" wx:key="id" bindtap="goActivity" data-id="{{item.id}}">
+          <text class="activity-name">{{item.name}}</text>
+          <text class="activity-type">{{item.type === 'seckill' ? '限时秒杀' : '拼团优惠'}}</text>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 商品列表 -->
+    <view wx:elif="{{item.type === 'product_list' && item.visible !== false}}" class="section">
+      <view class="section-header">
+        <text class="section-title">{{item.props.title || '热门推荐'}}</text>
+      </view>
+      <view class="product-grid">
+        <view class="product-card" wx:for="{{hotProducts}}" wx:key="id" bindtap="goProduct" data-id="{{item.id}}">
+          <image class="product-img" src="{{item.coverImage || '/images/default-product.png'}}" mode="aspectFill"></image>
+          <text class="product-name">{{item.name}}</text>
+          <view class="product-price-row">
+            <text class="price">¥{{item.standardPrice}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 单图广告 -->
+    <view wx:elif="{{item.type === 'image_ad' && item.visible !== false && item.props.image}}" class="section ad-section" bindtap="goAd" data-link="{{item.props.link}}">
+      <image class="ad-image" src="{{item.props.image}}" mode="widthFix"></image>
+    </view>
+  </block>
+
+  <view class="loading" wx:if="{{loading}}">加载中...</view>
+</view>

@@ -6,9 +6,12 @@ import com.crm.common.model.R;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -83,10 +86,41 @@ public class GlobalExceptionHandler {
         return R.failed(ResultCode.BAD_REQUEST, "请求方法不支持: " + e.getMethod());
     }
 
+    /** 用户名或密码错误 */
+    @ExceptionHandler(BadCredentialsException.class)
+    public R<Void> handleBadCredentials(BadCredentialsException e) {
+        return R.failed(ResultCode.UNAUTHORIZED, "用户名或密码错误");
+    }
+
+    /** 认证服务异常（带具体错误信息） */
+    @ExceptionHandler(InternalAuthenticationServiceException.class)
+    public R<Void> handleInternalAuth(InternalAuthenticationServiceException e) {
+        return R.failed(ResultCode.UNAUTHORIZED, e.getMessage());
+    }
+
     /** 权限不足 */
     @ExceptionHandler(AccessDeniedException.class)
     public R<Void> handleAccessDenied(AccessDeniedException e) {
         return R.failed(ResultCode.FORBIDDEN);
+    }
+
+    /** 数据库约束违反（NOT NULL、外键等） */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public R<Void> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        log.warn("数据约束异常: {}", e.getMessage());
+        String msg = e.getMessage();
+        if (msg != null) {
+            if (msg.contains("null value in column")) {
+                int colStart = msg.indexOf("\"");
+                int colEnd = msg.indexOf("\"", colStart + 1);
+                String column = colStart > 0 && colEnd > colStart ? msg.substring(colStart + 1, colEnd) : "未知字段";
+                return R.failed(ResultCode.INVALID_PARAM, "字段「" + column + "」不能为空");
+            }
+            if (msg.contains("violates foreign key constraint")) {
+                return R.failed(ResultCode.INVALID_PARAM, "关联数据不存在，请检查");
+            }
+        }
+        return R.failed(ResultCode.INTERNAL_ERROR, "数据保存失败");
     }
 
     /** 数据重复 */

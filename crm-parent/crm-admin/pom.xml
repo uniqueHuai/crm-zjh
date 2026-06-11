@@ -20,6 +20,7 @@
         <dependency><groupId>com.crm</groupId><artifactId>crm-mall</artifactId></dependency>
         <dependency><groupId>com.crm</groupId><artifactId>crm-collaboration</artifactId></dependency>
         <dependency><groupId>com.crm</groupId><artifactId>crm-report</artifactId></dependency>
+        <dependency><groupId>com.crm</groupId><artifactId>crm-ai</artifactId></dependency>
 
         <!-- Spring Boot -->
         <dependency>

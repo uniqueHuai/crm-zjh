@@ -14,9 +14,9 @@
         <where>
             u.deleted_at IS NULL
             <if test="keywords != null and keywords != ''">
-                AND (u.real_name LIKE concat('%', #{keywords}, '%')
-                OR u.username LIKE concat('%', #{keywords}, '%')
-                OR u.phone LIKE concat('%', #{keywords}, '%'))
+                AND (u.real_name LIKE '%' || #{keywords} || '%'
+                OR u.username LIKE '%' || #{keywords} || '%'
+                OR u.phone LIKE '%' || #{keywords} || '%')
             </if>
             <if test="deptId != null">
                 AND u.dept_id = #{deptId}
@@ -29,7 +29,10 @@
     </select>
 
     <select id="selectByUsername" resultType="com.crm.system.entity.SysUser">
-        SELECT * FROM sys_user WHERE username = #{username} AND deleted_at IS NULL
+        SELECT u.*, d.name AS dept_name
+        FROM sys_user u
+        LEFT JOIN sys_dept d ON u.dept_id = d.id
+        WHERE u.username = #{username} AND u.deleted_at IS NULL
     </select>
 
     <select id="selectByDeptId" resultType="com.crm.system.entity.SysUser">

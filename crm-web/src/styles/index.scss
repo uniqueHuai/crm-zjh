@@ -1,5 +1,8 @@
-/* ======== 全局样式 ======== */
+@use './fonts.scss';
+@use './variables.scss';
+@use './mixins.scss';
 
+/* ======== Base Reset ======== */
 * {
   box-sizing: border-box;
 }
@@ -8,77 +11,225 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--crm-font-family);
+  font-size: var(--crm-font-size-base);
+  line-height: var(--crm-line-height);
+  letter-spacing: var(--crm-letter-spacing);
+  color: var(--crm-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: var(--crm-bg);
 }
 
 #app {
   height: 100%;
 }
 
-/* ======== 滚动条 ======== */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* ======== Element Plus Tweaks ======== */
+
+/* Buttons */
+.el-button {
+  --el-border-radius-base: var(--crm-radius-md);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: all var(--crm-transition-fast);
 }
-::-webkit-scrollbar-track {
-  background: transparent;
+.el-button--primary {
+  --el-button-bg-color: var(--crm-primary);
+  --el-button-border-color: var(--crm-primary);
+  --el-button-hover-bg-color: var(--crm-primary-dark);
+  --el-button-hover-border-color: var(--crm-primary-dark);
 }
-::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
+.el-button--small { border-radius: 6px; }
+.el-button.link,
+.el-button--text {
+  letter-spacing: normal;
 }
 
-/* ======== 页面通用 ======== */
-.page-container {
-  padding: 20px;
-  background: #fff;
-  border-radius: 8px;
+/* Tables */
+.el-table {
+  border-radius: var(--crm-radius-md);
+  --el-table-border-color: var(--crm-border-light);
+  thead th {
+    font-weight: 600;
+    font-size: var(--crm-font-size-sm);
+    color: var(--crm-text-regular);
+    background: var(--crm-bg-gray);
+    letter-spacing: 0.02em;
+  }
+  .el-table__row {
+    transition: background var(--crm-transition-fast);
+  }
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  h3 {
+/* Cards */
+.el-card {
+  border-radius: var(--crm-radius-lg) !important;
+  border: 1px solid var(--crm-border) !important;
+  box-shadow: var(--crm-shadow-sm) !important;
+  &.el-card--shadow-hover:hover {
+    box-shadow: var(--crm-shadow-md) !important;
+  }
+}
+
+/* Dialog */
+.el-dialog {
+  border-radius: var(--crm-radius-xl);
+  box-shadow: var(--crm-shadow-lg);
+  .el-dialog__header {
+    padding: var(--crm-space-lg) var(--crm-space-xl);
     margin: 0;
-    font-size: 18px;
-    color: #333;
+    border-bottom: 1px solid var(--crm-border);
+    .el-dialog__title {
+      font-size: var(--crm-font-size-xl);
+      font-weight: 600;
+      letter-spacing: var(--crm-letter-spacing-heading);
+    }
+  }
+  .el-dialog__body {
+    padding: var(--crm-space-xl);
+  }
+  .el-dialog__footer {
+    padding: var(--crm-space-base) var(--crm-space-xl);
+    border-top: 1px solid var(--crm-border);
   }
 }
 
-/* ======== 表格操作栏 ======== */
-.table-operations {
-  margin-bottom: 16px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
+/* Search Forms: spacing between wrapped rows */
+.search-form .el-form {
+  row-gap: 5px !important;
 }
 
-/* ======== 卡片统计 ======== */
-.stat-card {
-  text-align: center;
-  padding: 16px 0;
-  .stat-value {
-    font-size: 28px;
-    font-weight: bold;
-    color: #409eff;
-  }
-  .stat-label {
-    font-size: 14px;
-    color: #909399;
-    margin-top: 8px;
+/* Form Labels */
+.el-form-item__label {
+  font-weight: 500;
+  font-size: var(--crm-font-size-sm);
+  color: var(--crm-text-regular);
+  letter-spacing: 0.01em;
+}
+
+/* Tags */
+.el-tag {
+  border-radius: 6px;
+  padding: 0 8px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Pagination */
+.el-pagination {
+  justify-content: flex-end;
+  margin-top: var(--crm-space-base);
+  button, .el-pager li {
+    border-radius: var(--crm-radius-md) !important;
+    min-width: 32px;
+    height: 32px;
+    line-height: 32px;
+    font-weight: 500;
   }
 }
 
-/* ======== 过渡动画 ======== */
+/* Inputs */
+.el-input__wrapper {
+  border-radius: var(--crm-radius-md) !important;
+  box-shadow: 0 0 0 1px var(--crm-border) inset !important;
+  transition: box-shadow var(--crm-transition-fast) !important;
+  &:hover {
+    box-shadow: 0 0 0 1px var(--crm-primary-light) inset !important;
+  }
+  &.is-focus {
+    box-shadow: 0 0 0 2px var(--crm-primary) inset !important;
+  }
+}
+
+/* Select */
+.el-select .el-input__wrapper { border-radius: var(--crm-radius-md) !important; }
+
+/* Switch */
+.el-switch {
+  --el-switch-on-color: var(--crm-success);
+}
+
+/* Breadcrumb */
+.el-breadcrumb {
+  font-size: var(--crm-font-size-sm);
+  .el-breadcrumb__inner { font-weight: 500; }
+}
+
+/* Menu (Sidebar) */
+.el-menu-item, .el-sub-menu__title {
+  letter-spacing: 0.02em;
+}
+
+/* Tabs */
+.el-tabs__item {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Radio */
+.el-radio__label {
+  font-size: var(--crm-font-size-sm);
+}
+
+/* Checkbox */
+.el-checkbox__label {
+  font-size: var(--crm-font-size-sm);
+}
+
+/* Empty */
+.el-empty__description p {
+  font-size: var(--crm-font-size-sm);
+  color: var(--crm-text-secondary);
+}
+
+/* Notifications */
+.el-message {
+  border-radius: var(--crm-radius-lg) !important;
+  box-shadow: var(--crm-shadow-md) !important;
+  border-width: 0 !important;
+  padding: 12px 20px !important;
+}
+
+/* Tooltip */
+.el-tooltip__popper {
+  border-radius: var(--crm-radius-md);
+  font-size: var(--crm-font-size-sm);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d0d2dc; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #b0b3c0; }
+
+/* Selection */
+::selection {
+  background: var(--crm-primary-lighter);
+  color: var(--crm-primary-dark);
+}
+
+/* ======== Transition Overrides ======== */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity var(--crm-transition-base);
 }
 .fade-enter-from,
 .fade-leave-to {
+  opacity: 0;
+}
+
+.slide-fade-enter-active {
+  transition: all var(--crm-transition-base);
+}
+.slide-fade-leave-active {
+  transition: all var(--crm-transition-fast);
+}
+.slide-fade-enter-from {
+  transform: translateX(20px);
+  opacity: 0;
+}
+.slide-fade-leave-to {
+  transform: translateX(-20px);
   opacity: 0;
 }

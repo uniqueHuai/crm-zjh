@@ -28,6 +28,11 @@ public class LoginUser implements UserDetails {
     private Long deptId;
     private String username;
     private String realName;
+    private String avatar;
+    private String phone;
+    private String email;
+    private String deptName;
+    private String lastLoginAt;
     private String password;
     private Integer dataScope;
     private List<Long> roleIds;
@@ -37,8 +42,8 @@ public class LoginUser implements UserDetails {
     @JsonIgnore
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        if (roles == null) return List.of();
-        return roles.stream()
+        if (permissions == null || permissions.isEmpty()) return List.of();
+        return permissions.stream()
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toSet());
     }

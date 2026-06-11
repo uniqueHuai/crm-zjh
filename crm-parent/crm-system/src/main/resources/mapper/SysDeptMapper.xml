@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.system.mapper.SysDeptMapper">
+
+    <resultMap id="DeptResultMap" type="com.crm.system.entity.SysDept">
+        <id column="id" property="id"/>
+        <result column="leader_name" property="leaderName"/>
+    </resultMap>
+
+    <select id="selectAllDepts" resultMap="DeptResultMap">
+        SELECT d.*, u.real_name AS leader_name
+        FROM sys_dept d
+        LEFT JOIN sys_user u ON d.leader_id = u.id
+        WHERE d.deleted_at IS NULL
+        ORDER BY d.sort_order ASC
+    </select>
+
+    <select id="selectByParentId" resultMap="DeptResultMap">
+        SELECT d.*, u.real_name AS leader_name
+        FROM sys_dept d
+        LEFT JOIN sys_user u ON d.leader_id = u.id
+        WHERE d.parent_id = #{parentId} AND d.deleted_at IS NULL
+        ORDER BY d.sort_order ASC
+    </select>
+
+    <select id="selectChildDeptIds" resultType="long">
+        SELECT id FROM sys_dept
+        WHERE deleted_at IS NULL AND status = 1
+        AND (id = #{deptId} OR ancestors LIKE concat('%', #{deptId}, '%'))
+    </select>
+
+    <select id="selectDeptIdsByRoleId" resultType="long">
+        SELECT dept_id FROM sys_role_dept WHERE role_id = #{roleId}
+    </select>
+
+</mapper>

@@ -1,0 +1,56 @@
+<view class="page">
+  <view class="profile-section">
+    <view class="avatar">
+      <image src="{{(customerInfo && customerInfo.avatarUrl) || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+    </view>
+    <view class="profile-info">
+      <text class="nickname">{{(customerInfo && customerInfo.nickname) || (customerInfo && customerInfo.name) || '微信用户'}}</text>
+      <text class="level" wx:if="{{customerInfo && customerInfo.levelName}}">{{customerInfo.levelName}}</text>
+    </view>
+    <text class="arrow">></text>
+  </view>
+
+  <view class="section">
+    <view class="section-header" bindtap="goOrders" data-tab="0">
+      <text class="section-title">我的订单</text>
+      <text class="section-more">查看全部 ></text>
+    </view>
+    <view class="order-stats">
+      <view class="stat-item" bindtap="goOrders" data-tab="1">
+        <text class="stat-num">{{orderCounts.pending}}</text>
+        <text class="stat-label">待付款</text>
+      </view>
+      <view class="stat-item" bindtap="goOrders" data-tab="2">
+        <text class="stat-num">{{orderCounts.paid}}</text>
+        <text class="stat-label">待发货</text>
+      </view>
+      <view class="stat-item" bindtap="goOrders" data-tab="3">
+        <text class="stat-num">{{orderCounts.shipped}}</text>
+        <text class="stat-label">待收货</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section menu-section">
+    <view class="menu-item" bindtap="goAddresses">
+      <text class="menu-label">收货地址</text>
+      <text class="arrow">></text>
+    </view>
+    <view class="menu-item" bindtap="goCoupons">
+      <text class="menu-label">我的优惠券</text>
+      <text class="arrow">></text>
+    </view>
+    <view class="menu-item" bindtap="goActivities">
+      <text class="menu-label">活动中心</text>
+      <text class="arrow">></text>
+    </view>
+    <view class="menu-item" bindtap="goDistribution">
+      <text class="menu-label">分销中心</text>
+      <text class="arrow">></text>
+    </view>
+    <view class="menu-item" bindtap="goCustomerService">
+      <text class="menu-label">智能客服</text>
+      <text class="arrow">></text>
+    </view>
+  </view>
+</view>

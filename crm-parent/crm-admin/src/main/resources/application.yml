@@ -5,7 +5,7 @@
 server:
   port: 8080
   servlet:
-    context-path: /
+    context-path: /api/v1
   undertow:
     threads:
       io: 4
@@ -23,9 +23,9 @@ spring:
   # 数据源
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/crm_db?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    url: jdbc:postgresql://localhost:5432/crm-db?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&stringtype=unspecified&connectionTimeZone=Asia/Shanghai
     username: postgres
-    password: postgres
+    password: 123456
     hikari:
       minimum-idle: 10
       maximum-pool-size: 50
@@ -75,6 +75,7 @@ mybatis-plus:
     call-setters-on-nulls: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   type-aliases-package: com.crm.**.entity
+  type-handlers-package: com.crm.framework.mybatis
   mapper-locations: classpath*:mapper/**/*.xml
 
 # JWT
@@ -82,6 +83,23 @@ jwt:
   secret: crm-jwt-secret-key-must-be-at-least-256-bits-long-for-hs256
   expire: 7200          # Token 过期时间（秒），默认 2 小时
   refresh-expire: 2592000  # Refresh Token 过期时间（秒），默认 30 天
+
+# 小程序配置
+mp:
+  jwt:
+    secret: mp-jwt-secret-key-must-be-at-least-256-bits-long-for-hs256
+    expire: 2592000       # 小程序 Token 过期时间（秒），默认 30 天
+  wechat:
+    appid: wx               # 微信小程序 AppID
+    secret: secret           # 微信小程序 Secret
+
+# SiliconFlow AI 配置
+siliconflow:
+  api-key: sk-dlmyuebxlevmsujrzmrqojtgbeeplxsgijkizsmsxgfcbnng  # 替换为实际 API Key
+  base-url: https://api.siliconflow.cn/v1
+  model: deepseek-ai/DeepSeek-V4-Flash
+  temperature: 0.7
+  max-tokens: 4096
 
 # Knife4j
 springdoc:
@@ -100,3 +118,14 @@ logging:
   level:
     com.crm: debug
     org.springframework.security: warn
+
+# 文件存储
+crm:
+  storage:
+    type: local          # local | minio
+    local-path: ./uploads
+    # minio:
+    #   endpoint: http://localhost:9000
+    #   access-key: minioadmin
+    #   secret-key: minioadmin
+    #   bucket: crm-files
