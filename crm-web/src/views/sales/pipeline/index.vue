@@ -212,7 +212,6 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-.pipeline-page { max-width: 1400px; }
 
 .page-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;
   .page-title { margin:0; font-size:20px; font-weight:700; color:var(--crm-text-primary); }

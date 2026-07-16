@@ -431,7 +431,6 @@ onMounted(fetchData)
 </script>
 
 <style scoped lang="scss">
-.lead-page { max-width: 1400px; }
 
 .page-header {
   display: flex; justify-content: space-between; align-items: flex-start;

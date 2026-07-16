@@ -138,7 +138,20 @@
           </div>
         </div>
         <div class="detail-section">
-          <h4 class="section-title">最近跟进</h4>
+          <div class="section-header">
+            <h4 class="section-title">标签</h4>
+            <el-button link type="primary" size="small" @click="showTagSelector = true">编辑标签</el-button>
+          </div>
+          <div class="tag-list">
+            <el-tag v-for="t in detailTagList" :key="t.id" size="small" closable :disable-transitions @close="handleDetailRemoveTag(t.id)" style="margin-right:6px;margin-bottom:4px">{{ t.name }}</el-tag>
+            <span v-if="!detailTagList.length" class="text-secondary">暂无标签</span>
+          </div>
+        </div>
+        <div class="detail-section">
+          <div class="section-header">
+            <h4 class="section-title">最近跟进</h4>
+            <el-button link type="primary" size="small" @click="followUpDialogVisible = true">写跟进</el-button>
+          </div>
           <div v-for="f in detailFollowUps" :key="f.id" class="timeline-item">
             <div class="timeline-dot" />
             <div class="timeline-content">
@@ -149,7 +162,10 @@
           <el-empty v-if="!detailFollowUps.length" description="暂无跟进" :image-size="50" />
         </div>
         <div class="detail-section">
-          <h4 class="section-title">关联商机</h4>
+          <div class="section-header">
+            <h4 class="section-title">关联商机</h4>
+            <el-button link type="primary" size="small" @click="oppDialogVisible = true">新建商机</el-button>
+          </div>
           <el-table :data="detailOpportunities" size="small" max-height="200">
             <el-table-column prop="name" label="名称" min-width="120" />
             <el-table-column prop="stageName" label="阶段" width="100" />
@@ -168,15 +184,108 @@
         </div>
       </template>
     </el-drawer>
+
+    <!-- Transfer Dialog -->
+    <el-dialog v-model="transferDialogVisible" title="转移客户负责人" width="420px" :close-on-click-modal="false">
+      <el-form label-width="90px">
+        <el-form-item label="转移数量">
+          <el-tag type="info">{{ transferTargetIds.length }} 个客户</el-tag>
+        </el-form-item>
+        <el-form-item label="新负责人" :rules="[{required:true,message:'请选择新负责人'}]">
+          <el-select v-model="transferForm.newOwnerId" placeholder="请选择新负责人" style="width:100%" filterable>
+            <el-option v-for="u in userOptions" :key="u.id" :label="u.realName" :value="u.id" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="transferDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="loading" @click="handleTransferSubmit">确认转移</el-button>
+      </template>
+    </el-dialog>
+    <!-- Tag Selector Dialog -->
+    <el-dialog v-model="showTagSelector" title="编辑标签" width="420px" :close-on-click-modal="false" @open="editTagIds = [...(detailCustomer?.tagIds || [])]">
+      <el-select v-model="editTagIds" multiple style="width:100%" placeholder="选择标签">
+        <el-option v-for="t in tagOptions" :key="t.id" :label="t.name" :value="t.id" />
+      </el-select>
+      <template #footer>
+        <el-button @click="showTagSelector = false">取消</el-button>
+        <el-button type="primary" :loading="loading" @click="handleSaveTags">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Follow-up Dialog -->
+    <el-dialog v-model="followUpDialogVisible" title="写跟进" width="480px" :close-on-click-modal="false">
+      <el-form label-width="80px">
+        <el-form-item label="跟进类型">
+          <el-select v-model="followUpForm.type" style="width:100%">
+            <el-option label="电话" value="call" />
+            <el-option label="拜访" value="visit" />
+            <el-option label="邮件" value="mail" />
+            <el-option label="会议" value="meeting" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="跟进内容" :rules="[{required:true,message:'请输入跟进内容'}]">
+          <el-input v-model="followUpForm.content" type="textarea" :rows="4" placeholder="请描述跟进情况..." />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="followUpDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="loading" @click="handleAddFollowUp">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Opportunity Dialog -->
+    <el-dialog v-model="oppDialogVisible" title="新建商机" width="480px" :close-on-click-modal="false">
+      <el-form label-width="80px">
+        <el-form-item label="商机名称" :rules="[{required:true,message:'请输入商机名称'}]">
+          <el-input v-model="oppForm.name" placeholder="例如：CRM系统采购" />
+        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="销售阶段" :rules="[{required:true,message:'请选择阶段'}]">
+              <el-select v-model="oppForm.stageId" style="width:100%">
+                <el-option v-for="s in stageOptions" :key="s.id" :label="s.name" :value="s.id" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="预计金额">
+              <el-input-number v-model="oppForm.expectedAmount" :min="0" :step="1000" style="width:100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="预计成交">
+              <el-date-picker v-model="oppForm.expectedCloseDate" type="date" style="width:100%" value-format="YYYY-MM-DD" placeholder="选择日期" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="赢率">
+              <el-tag v-if="oppForm.stageId" type="primary">{{ stageOptions.find(s => s.id === oppForm.stageId)?.probability ?? 0 }}%</el-tag>
+              <span v-else class="text-secondary">选择阶段后显示</span>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="备注">
+          <el-input v-model="oppForm.remark" type="textarea" :rows="2" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="oppDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="loading" @click="handleAddOpportunity">创建</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus, Refresh, Download, ArrowDown } from '@element-plus/icons-vue'
 import { FormDialog } from '@/components/common'
-import { getCustomerPage, createCustomer, updateCustomer, deleteCustomer, getCustomerDetail, getCustomerLevels, getAllTags, getContactsByCustomer } from '@/api/modules/customer'
+import { getCustomerPage, createCustomer, updateCustomer, deleteCustomer, getCustomerDetail, getCustomerLevels, getAllTags, getContactsByCustomer, transferCustomer, batchTagCustomers, removeBatchTags } from '@/api/modules/customer'
+import { createFollowUp, createOpportunity, getOpportunityStages } from '@/api/modules/sales'
 import { getUserPage } from '@/api/modules/system/user'
 import type { Customer, Contact } from '@/types'
 
@@ -188,10 +297,27 @@ const dialogVisible = ref(false)
 const editingRow = ref<Customer | null>(null)
 const selection = ref<Customer[]>([])
 const drawerVisible = ref(false)
+const transferDialogVisible = ref(false)
+const transferTargetIds = ref<number[]>([])
+const transferForm = reactive({ newOwnerId: undefined as number | undefined })
+const isBatchTransfer = ref(false)
 const detailCustomer = ref<Customer | null>(null)
 const detailFollowUps = ref<any[]>([])
 const detailOpportunities = ref<any[]>([])
 const detailContacts = ref<Contact[]>([])
+
+const detailTagList = computed(() => {
+  const ids = detailCustomer.value?.tagIds || []
+  return tagOptions.value.filter(t => ids.includes(t.id))
+})
+
+const followUpDialogVisible = ref(false)
+const followUpForm = reactive({ type: 'call' as string, content: '' })
+const oppDialogVisible = ref(false)
+const oppForm = reactive({ name: '', stageId: undefined as number | undefined, expectedAmount: 0, expectedCloseDate: '', remark: '' })
+const stageOptions = ref<{id:number;name:string;probability:number}[]>([])
+const showTagSelector = ref(false)
+const editTagIds = ref<number[]>([])
 
 const currentUserId = computed(() => {
   try {
@@ -228,9 +354,36 @@ async function handleSubmit(formData: any, done: () => void) {
   } catch { done() }
 }
 
-function handleTransfer(row: Customer) { ElMessage.info('功能开发中') }
+function handleTransfer(row: Customer) {
+  isBatchTransfer.value = false
+  transferTargetIds.value = [row.id]
+  transferForm.newOwnerId = undefined
+  transferDialogVisible.value = true
+}
 function handleBatchTag() { ElMessage.info('功能开发中') }
-function handleBatchTransfer() { ElMessage.info('功能开发中') }
+function handleBatchTransfer() {
+  if (!selection.value.length) return
+  isBatchTransfer.value = true
+  transferTargetIds.value = selection.value.map(s => s.id)
+  transferForm.newOwnerId = undefined
+  transferDialogVisible.value = true
+}
+
+async function handleTransferSubmit() {
+  if (!transferForm.newOwnerId) {
+    ElMessage.warning('请选择新负责人')
+    return
+  }
+  if (!transferTargetIds.value.length) return
+  try {
+    for (const id of transferTargetIds.value) {
+      await transferCustomer(id, transferForm.newOwnerId, true)
+    }
+    ElMessage.success(`已将 ${transferTargetIds.value.length} 个客户转移给新负责人`)
+    transferDialogVisible.value = false
+    fetchData()
+  } catch { /* handled by interceptor */ }
+}
 
 async function handleDelete(row: Customer) {
   try {
@@ -250,6 +403,15 @@ function openDetail(row: Customer) {
 
 async function loadDetail() {
   if (!detailCustomer.value) return
+
+  // 加载销售阶段选项（如果还没加载过）
+  if (!stageOptions.value.length) {
+    try {
+      const res = await getOpportunityStages()
+      stageOptions.value = res.data.map((s: any) => ({ id: s.id, name: s.name, probability: s.probability }))
+    } catch { /* ignore */ }
+  }
+
   try {
     const res = await getCustomerDetail(detailCustomer.value.id)
     const d = res.data as any
@@ -263,6 +425,73 @@ async function loadDetail() {
     const res = await getContactsByCustomer(detailCustomer.value.id)
     detailContacts.value = (res.data as any).records || res.data || []
   } catch { /* ignore */ }
+}
+
+async function handleDetailRemoveTag(tagId: number) {
+  if (!detailCustomer.value) return
+  try {
+    await removeBatchTags({ customerIds: [detailCustomer.value.id], tagIds: [tagId] })
+    ElMessage.success('已移除标签')
+    await loadDetail()
+  } catch { /* handled by interceptor */ }
+}
+
+async function handleSaveTags() {
+  if (!detailCustomer.value) return
+  try {
+    await batchTagCustomers({ customerIds: [detailCustomer.value.id], tagIds: editTagIds.value, mode: 'overwrite' })
+    ElMessage.success('标签已更新')
+    showTagSelector.value = false
+    await loadDetail()
+  } catch { /* handled by interceptor */ }
+}
+
+async function handleAddFollowUp() {
+  if (!followUpForm.content.trim()) {
+    ElMessage.warning('请输入跟进内容')
+    return
+  }
+  if (!detailCustomer.value) return
+  try {
+    await createFollowUp({
+      customerId: detailCustomer.value.id,
+      type: followUpForm.type,
+      content: followUpForm.content,
+    })
+    ElMessage.success('跟进记录已添加')
+    followUpDialogVisible.value = false
+    followUpForm.content = ''
+    await loadDetail()
+  } catch { /* handled by interceptor */ }
+}
+
+async function handleAddOpportunity() {
+  if (!oppForm.name.trim()) {
+    ElMessage.warning('请输入商机名称')
+    return
+  }
+  if (!oppForm.stageId) {
+    ElMessage.warning('请选择销售阶段')
+    return
+  }
+  if (!detailCustomer.value) return
+  try {
+    await createOpportunity({
+      customerId: detailCustomer.value.id,
+      name: oppForm.name,
+      stageId: oppForm.stageId,
+      expectedAmount: oppForm.expectedAmount,
+      expectedCloseDate: oppForm.expectedCloseDate || undefined,
+      remark: oppForm.remark || undefined,
+    })
+    ElMessage.success('商机已创建')
+    oppDialogVisible.value = false
+    oppForm.name = ''
+    oppForm.expectedAmount = 0
+    oppForm.expectedCloseDate = ''
+    oppForm.remark = ''
+    await loadDetail()
+  } catch { /* handled by interceptor */ }
 }
 
 async function fetchData() {
@@ -298,7 +527,6 @@ onMounted(() => { fetchData(); fetchOptions() })
 </script>
 
 <style scoped lang="scss">
-.customer-page { max-width: 1400px; }
 .page-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;
   .page-title { margin:0; font-size:20px; font-weight:700; color:var(--crm-text-primary); }
   .page-subtitle { margin:4px 0 0; font-size:13px; color:var(--crm-text-secondary); }
@@ -317,7 +545,12 @@ onMounted(() => { fetchData(); fetchOptions() })
 .pagination-wrap { display:flex; justify-content:flex-end; padding-top:16px; }
 
 .detail-section { margin-bottom:24px; }
+.tag-list { min-height:24px; }
+.text-secondary { font-size:13px; color:var(--crm-text-secondary); }
 .section-title { font-size:14px; font-weight:600; color:var(--crm-text-primary); margin:0 0 12px; padding-bottom:8px; border-bottom:1px solid var(--crm-border-light); }
+.section-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--crm-border-light);
+  .section-title { margin:0; padding:0; border:none; }
+}
 .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 .detail-item { display:flex; flex-direction:column; gap:4px;
   .label { font-size:12px; color:var(--crm-text-secondary); }

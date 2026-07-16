@@ -12,7 +12,7 @@
         SELECT q.*, c.name AS customer_name, u.real_name AS creator_name
         FROM crm_quotation q
         LEFT JOIN crm_customer c ON q.customer_id = c.id AND c.deleted_at IS NULL
-        LEFT JOIN sys_user u ON q.creator_id = u.id
+        LEFT JOIN sys_user u ON q.created_by = u.id
         <where>
             q.deleted_at IS NULL
             <if test="keywords != null and keywords != ''">

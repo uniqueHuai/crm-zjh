@@ -100,7 +100,6 @@ onMounted(fetchProfile)
 </script>
 
 <style scoped lang="scss">
-.profile-page { max-width: 1100px; }
 
 .profile-header-card {
   margin-bottom: 20px;

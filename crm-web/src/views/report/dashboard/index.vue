@@ -189,7 +189,6 @@ onMounted(fetchData)
 </script>
 
 <style scoped lang="scss">
-.report-dashboard { max-width: 1400px; }
 .section { margin-bottom: 20px; }
 
 .page-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;

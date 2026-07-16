@@ -55,14 +55,57 @@ public class CrmCustomerServiceImpl extends ServiceImpl<CrmCustomerMapper, CrmCu
     }
 
     @Override
-    public CrmCustomer selectDetail(Long id) {
+    public Map<String, Object> selectDetail(Long id) {
         CrmCustomer customer = getById(id);
         if (customer == null) throw new BizException(404, "客户不存在");
 
+        // 查标签
         List<CrmTag> tags = tagMapper.selectByCustomerId(id);
         customer.setTagIds(tags.stream().map(CrmTag::getId).collect(Collectors.toList()));
 
-        return customer;
+        // 补充等级名称和负责人名称（getById 只查单表不会 JOIN）
+        try {
+            Map<String, Object> extra = jdbcTemplate.queryForMap(
+                    "SELECT l.name AS level_name, u.real_name AS owner_name " +
+                    "FROM crm_customer c " +
+                    "LEFT JOIN crm_customer_level l ON c.level_id = l.id " +
+                    "LEFT JOIN sys_user u ON c.owner_id = u.id " +
+                    "WHERE c.id = ?", id);
+            customer.setLevelName((String) extra.get("level_name"));
+            customer.setOwnerName((String) extra.get("owner_name"));
+        } catch (Exception ignored) { }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("customer", customer);
+
+        // 最近跟进记录（取最新5条，含创建人姓名）
+        // 注：PostgreSQL jdbc 会将未加引号的别名转为小写，故用双引号保留驼峰
+        String followUpSql = "SELECT f.id, f.customer_id AS \"customerId\", f.type, f.content, " +
+                "f.is_important AS \"isImportant\", f.created_at AS \"createdAt\", " +
+                "u.real_name AS \"creatorName\" " +
+                "FROM crm_follow_up f " +
+                "LEFT JOIN sys_user u ON f.creator_id = u.id " +
+                "WHERE f.customer_id = ? ORDER BY f.created_at DESC LIMIT 5";
+        List<Map<String, Object>> recentFollowUps = jdbcTemplate.queryForList(followUpSql, id);
+        result.put("recentFollowUps", recentFollowUps);
+
+        // 关联商机（含阶段名称和负责人姓名）
+        String oppSql = "SELECT o.id, o.name, o.expected_amount AS \"expectedAmount\", " +
+                "o.expected_close_date AS \"expectedCloseDate\", o.stage_id AS \"stageId\", " +
+                "s.name AS \"stageName\", o.owner_id AS \"ownerId\", u.real_name AS \"ownerName\" " +
+                "FROM crm_opportunity o " +
+                "LEFT JOIN crm_opportunity_stage s ON o.stage_id = s.id " +
+                "LEFT JOIN sys_user u ON o.owner_id = u.id " +
+                "WHERE o.customer_id = ?";
+        List<Map<String, Object>> opportunities = jdbcTemplate.queryForList(oppSql, id);
+        result.put("opportunities", opportunities);
+
+        // 联系人
+        List<CrmContact> contacts = contactMapper.selectList(
+                new LambdaQueryWrapper<CrmContact>().eq(CrmContact::getCustomerId, id));
+        result.put("contacts", contacts);
+
+        return result;
     }
 
     @Override

@@ -61,7 +61,7 @@ public class CrmCustomerController {
     @Operation(summary = "客户详情/360°视图")
     @GetMapping("/{id}/detail")
     @PreAuthorize("hasAuthority('customer:customer:query')")
-    public R<CrmCustomer> detail(@PathVariable Long id) {
+    public R<Map<String, Object>> detail(@PathVariable Long id) {
         return R.ok(customerService.selectDetail(id));
     }
 

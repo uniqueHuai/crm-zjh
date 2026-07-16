@@ -15,7 +15,7 @@ public interface ICrmCustomerService extends IService<CrmCustomer> {
                                                 String city, Boolean isSleeping, String startDate,
                                                 String endDate, String tagIds);
 
-    CrmCustomer selectDetail(Long id);
+    Map<String, Object> selectDetail(Long id);
 
     boolean batchTag(List<Long> customerIds, List<Long> tagIds, String mode);
 

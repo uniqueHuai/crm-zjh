@@ -126,3 +126,32 @@
 .send-btn.active {
   background: #4361ee;
 }
+
+/* 系统消息（转人工提示、恢复对话提示） */
+.system-message {
+  text-align: center;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #999;
+}
+
+.system-message.handoff-tip {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-radius: 8px;
+  margin: 8px 16px;
+  padding: 10px 16px;
+}
+
+/* 人工客服回复气泡 */
+.bubble.staff {
+  background: #fff8e1 !important;
+  border-color: #ffe0b2 !important;
+  color: #333 !important;
+}
+
+/* 人工模式输入区 */
+.input-area.human-mode {
+  background: #fff8e1;
+  border-top-color: #ffe0b2;
+}

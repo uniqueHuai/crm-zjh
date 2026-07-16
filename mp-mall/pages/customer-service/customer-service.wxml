@@ -1,16 +1,29 @@
 <view class="chat-page">
+  <!-- 消息列表 -->
   <scroll-view class="message-list" scroll-y scroll-with-animation upper-threshold="50" scroll-into-view="{{scrollToId}}">
+    <!-- 恢复的对话提示 -->
+    <view class="system-message" wx:if="{{messages.length > 0 && conversationStatus === 'human'}}">
+      <text>已恢复之前的对话</text>
+    </view>
+
+    <!-- 消息 -->
     <block wx:for="{{messages}}" wx:key="index">
       <view class="message-item {{item.role === 'assistant' ? 'left' : 'right'}}" id="msg-{{index}}">
         <view class="avatar {{item.role}}">
           <image src="/images/default-avatar.png" mode="aspectFill" />
         </view>
-        <view class="bubble {{item.role}}">
+        <view class="bubble {{item.role}} {{item.staffReply ? 'staff' : ''}}">
           <text>{{item.content}}</text>
         </view>
       </view>
     </block>
 
+    <!-- 转人工提示 -->
+    <view wx:if="{{conversationStatus === 'human' && !loading}}" class="system-message handoff-tip">
+      <text>您已接入人工客服，请输入您的问题</text>
+    </view>
+
+    <!-- 加载动画 -->
     <view wx:if="{{loading}}" class="message-item left" id="msg-loading">
       <view class="avatar assistant">
         <image src="/images/default-avatar.png" mode="aspectFill" />
@@ -21,7 +34,8 @@
     </view>
   </scroll-view>
 
-  <view wx:if="{{showQuickQuestions}}" class="quick-questions">
+  <!-- 常见问题 -->
+  <view wx:if="{{showQuickQuestions && messages.length === 0}}" class="quick-questions">
     <view class="quick-title">常见问题</view>
     <view class="quick-list">
       <view class="quick-item" wx:for="{{quickQuestions}}" wx:key="index" bindtap="sendQuickQuestion" data-question="{{item}}">
@@ -30,9 +44,10 @@
     </view>
   </view>
 
-  <view class="input-area">
+  <!-- 输入区 -->
+  <view class="input-area {{conversationStatus === 'human' ? 'human-mode' : ''}}">
     <view class="input-wrapper">
-      <input class="input" type="text" placeholder="输入您的问题..." value="{{inputMessage}}" bindinput="onInputChange" confirm-type="send" bindconfirm="sendMessage" />
+      <input class="input" type="text" placeholder="{{conversationStatus === 'human' ? '输入回复内容...' : '输入您的问题...'}}" value="{{inputMessage}}" bindinput="onInputChange" confirm-type="send" bindconfirm="sendMessage" />
       <view class="send-btn {{hasInput ? 'active' : ''}}" bindtap="sendMessage">发送</view>
     </view>
   </view>

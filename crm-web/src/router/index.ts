@@ -266,12 +266,19 @@ const routes: RouteRecordRaw[] = [
         name: 'AiKnowledgeBase',
         component: () => import('@/views/ai/knowledge-base/index.vue'),
         meta: { title: '知识库管理' }
+      },
+      {
+        path: 'customer-service',
+        name: 'AiCustomerService',
+        component: () => import('@/views/ai/customer-service/index.vue'),
+        meta: { title: '客服中心' }
       }
     ]
-  }
+  },
 ]
 
 const router = createRouter({
+
   history: createWebHashHistory(),
   routes
 })
