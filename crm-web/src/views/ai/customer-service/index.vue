@@ -104,10 +104,11 @@ onUnmounted(() => {
 async function loadConversations() {
   try {
     const res = await request.get('/ai/customer_service/conversations/active')
-    const list = res.data || []
+    const raw = res.data || []
+    const list = Array.isArray(raw) ? raw : (raw.records || [])
     conversations.value = list.filter((c: any) => c.status === 'active')
-  } catch {
-    // ignore
+  } catch (e) {
+    console.warn('[智能客服] 加载对话列表失败', e)
   }
 }
 
@@ -115,18 +116,19 @@ async function selectConversation(conv: any) {
   currentConv.value = conv
   await loadMessages(conv.id)
 }
-
 async function loadMessages(convId: number) {
   try {
     const res = await request.get(`/ai/customer_service/conversations/${convId}/messages`)
-    messages.value = (res.data || []).map((m: any) => ({
+    const raw = res.data || []
+    const list = Array.isArray(raw) ? raw : (raw.records || [])
+    messages.value = list.map((m: any) => ({
       ...m,
       staffReply: m.staffReply || false,
     }))
     await nextTick()
     scrollToBottom()
-  } catch {
-    // ignore
+  } catch (e) {
+    console.warn('[智能客服] 加载消息失败', e)
   }
 }
 

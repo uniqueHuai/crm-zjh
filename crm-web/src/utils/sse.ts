@@ -44,6 +44,8 @@ export class SseClient {
       const decoder = new TextDecoder()
       let buffer = ''
 
+      let lastEvent = ''
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -56,10 +58,13 @@ export class SseClient {
           const trimmed = line.trim()
           if (!trimmed) continue
 
-          // Handle event: message / event: done lines
-          if (trimmed.startsWith('event:')) continue
+          // Track event type
+          if (trimmed.startsWith('event:')) {
+            lastEvent = trimmed.slice(6).trim()
+            continue
+          }
 
-          // Handle data: 开头的行（兼容 data:content 和 data: content 两种格式）
+          // Handle data: 开头的行
           const DATA_PREFIX = 'data:'
           if (trimmed.startsWith(DATA_PREFIX)) {
             const data = trimmed.slice(DATA_PREFIX.length).trim()
@@ -69,6 +74,13 @@ export class SseClient {
               return
             }
             if (!data) continue
+
+            // event:error → onError callback
+            if (lastEvent === 'error') {
+              lastEvent = ''
+              options.onError?.(new Error(data))
+              return
+            }
 
             try {
               const parsed = JSON.parse(data)
@@ -80,6 +92,7 @@ export class SseClient {
             } catch {
               options.onMessage(data)
             }
+            lastEvent = ''
           }
         }
       }

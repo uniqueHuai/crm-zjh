@@ -138,10 +138,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Refresh, Download, Delete } from '@element-plus/icons-vue'
-import { FormDialog } from '@/components/common'
+import { getOperationLogPage, getOperationLogById, cleanOperationLogs } from '@/api/modules/system'
 
 interface OperationLog {
   id: number; operation: string; operatorName: string; businessType: string;
@@ -171,29 +171,6 @@ const queryParams = reactive({
   status:undefined as number|undefined, dateRange:undefined as [string,string]|undefined
 })
 
-const mockData: OperationLog[] = Array.from({length:10}, (_,i) => {
-  const ops = [
-    { op:'用户登录', name:'admin', type:'login', method:'com.crm.system.controller.AuthController.login(String,String)', url:'/api/auth/login', params:'{"username":"admin","password":"******"}', result:'{"token":"eyJhbGciOiJ...","user":{"id":1}}' },
-    { op:'新增客户', name:'张三', type:'insert', method:'com.crm.customer.controller.CustomerController.create(CustomerDTO)', url:'/api/customer/create', params:'{"name":"北京科技有限公司","phone":"138****9999"}', result:'{"id":1001,"msg":"操作成功"}' },
-    { op:'编辑用户', name:'李四', type:'update', method:'com.crm.system.controller.SysUserController.update(Long,UserDTO)', url:'/api/system/user/update', params:'{"id":5,"realName":"王五","email":"wangwu@crm.com"}', result:'{"msg":"操作成功"}' },
-    { op:'删除线索', name:'赵六', type:'delete', method:'com.crm.customer.controller.LeadController.delete(Long)', url:'/api/customer/lead/delete', params:'{"id":203}', result:'{"msg":"操作成功"}' },
-    { op:'导出客户', name:'张三', type:'export', method:'com.crm.customer.controller.CustomerController.export(ExportDTO)', url:'/api/customer/export', params:'{"status":1,"startDate":"2026-01-01"}', result:'{"file":"/export/customer_20260529.xlsx"}' },
-    { op:'查询商机', name:'李四', type:'select', method:'com.crm.sales.controller.PipelineController.list(QueryDTO)', url:'/api/sales/pipeline/list', params:'{"page":1,"size":20}', result:'{"total":45,"list":[]}' },
-    { op:'分配角色', name:'admin', type:'update', method:'com.crm.system.controller.SysUserController.assignRole(Long,Long[])', url:'/api/system/user/assignRole', params:'{"userId":3,"roleIds":[2,3]}', result:'{"msg":"操作成功"}' },
-    { op:'用户登录', name:'王五', type:'login', method:'com.crm.system.controller.AuthController.login(String,String)', url:'/api/auth/login', params:'{"username":"wangwu","password":"******"}', result:'{"msg":"密码错误"}' },
-    { op:'新增合同', name:'赵六', type:'insert', method:'com.crm.sales.controller.ContractController.create(ContractDTO)', url:'/api/sales/contract/create', params:'{"customerId":1001,"amount":500000}', result:'{"id":3001,"msg":"操作成功"}' },
-    { op:'系统配置', name:'admin', type:'update', method:'com.crm.system.controller.ConfigController.update(ConfigDTO)', url:'/api/system/config/update', params:'{"configKey":"site.name","configValue":"新CRM系统"}', result:'{"msg":"操作成功"}' },
-  ]
-  const op = ops[i % ops.length]
-  const fail = op.op === '用户登录' && i === 7
-  return {
-    id: i+1, ...op, ip: ['192.168.1.100','192.168.1.101','10.0.0.1','172.16.0.1'][i%4],
-    status: fail ? 0 : 1, duration: Math.floor(Math.random() * 500) + 10,
-    createdAt: `2026-05-${String(20+i).padStart(2,'0')} ${String(8+Math.floor(i/2)).padStart(2,'0')}:${String(i*3%60).padStart(2,'0')}:${String(i*7%60).padStart(2,'0')}`,
-    errorMsg: fail ? 'org.springframework.security.authentication.BadCredentialsException: 密码错误' : undefined,
-  }
-})
-
 function handleSearch() { queryParams.page = 1; fetchData() }
 function handleReset() {
   Object.assign(queryParams, { keywords:'', businessType:undefined, status:undefined, dateRange:undefined, page:1 })
@@ -206,24 +183,29 @@ function openDetail(row: OperationLog) {
 }
 
 function handleExport() { ElMessage.info('正在导出操作日志...') }
-function handleClear() { ElMessage.success('操作日志已清空'); fetchData() }
+
+async function handleClear() {
+  try {
+    await cleanOperationLogs(30)
+    ElMessage.success('已清空30天前的操作日志')
+    fetchData()
+  } catch { /* handled by interceptor */ }
+}
 
 async function fetchData() {
   loading.value = true
   try {
-    await new Promise(r => setTimeout(r, 300))
-    let list = [...mockData]
-    if (queryParams.keywords) {
-      const kw = queryParams.keywords
-      list = list.filter(i => i.operation.includes(kw!) || i.operatorName.includes(kw!))
-    }
-    if (queryParams.businessType) list = list.filter(i => i.businessType === queryParams.businessType)
-    if (queryParams.status !== undefined) list = list.filter(i => i.status === queryParams.status)
+    const params: Record<string, any> = { page: queryParams.page, size: queryParams.size }
+    if (queryParams.keywords) params.keywords = queryParams.keywords
+    if (queryParams.businessType) params.businessType = queryParams.businessType
+    if (queryParams.status !== undefined) params.status = queryParams.status
     if (queryParams.dateRange) {
-      const [start, end] = queryParams.dateRange
-      list = list.filter(i => i.createdAt >= start && i.createdAt <= end + ' 23:59:59')
+      params.startDate = queryParams.dateRange[0]
+      params.endDate = queryParams.dateRange[1]
     }
-    logList.value = list; total.value = list.length
+    const res = await getOperationLogPage(params as any)
+    logList.value = (res.data.records || []) as OperationLog[]
+    total.value = Number(res.data.total ?? 0)
   } finally { loading.value = false }
 }
 

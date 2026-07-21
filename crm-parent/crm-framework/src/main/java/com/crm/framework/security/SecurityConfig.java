@@ -33,6 +33,7 @@ public class SecurityConfig {
             "/doc.html",
             "/swagger-ui/**",
             "/v3/api-docs/**",
+            "/uploads/**",
             "/webjars/**",
             "/favicon.ico",
     };

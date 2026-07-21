@@ -62,6 +62,7 @@ declare module 'vue' {
     ElTreeSelect: typeof import('element-plus/es')['ElTreeSelect']
     ElUpload: typeof import('element-plus/es')['ElUpload']
     FormDialog: typeof import('./../components/common/FormDialog.vue')['default']
+    ImageUpload: typeof import('./../components/common/ImageUpload.vue')['default']
     PageContainer: typeof import('./../components/common/PageContainer.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

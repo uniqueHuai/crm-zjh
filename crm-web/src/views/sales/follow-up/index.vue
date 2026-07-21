@@ -56,6 +56,13 @@
         <el-table-column prop="nextContactAt" label="下次联系" width="110">
           <template #default="{row}">{{ row.nextContactAt || '-' }}</template>
         </el-table-column>
+        <el-table-column label="操作" width="100" fixed="right">
+          <template #default="{row}">
+            <el-popconfirm title="确认删除?" @confirm="handleDelete(row)">
+              <template #reference><el-button link type="danger" size="small">删除</el-button></template>
+            </el-popconfirm>
+          </template>
+        </el-table-column>
       </el-table>
 
       <div class="pagination-wrap">
@@ -69,10 +76,11 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Plus, Refresh } from '@element-plus/icons-vue'
-// Note: follow-up is view-only, so FormDialog is not needed
+import { getFollowUpPage, deleteFollowUp } from '@/api/modules/sales'
 
-interface FollowUp {
+interface FollowUpRecord {
   id: number
+  customerId?: number
   customerName: string
   content: string
   type: string
@@ -91,7 +99,7 @@ function typeTagType(type: string) {
 }
 
 const loading = ref(false)
-const followUpList = ref<FollowUp[]>([])
+const followUpList = ref<FollowUpRecord[]>([])
 const total = ref(0)
 const showSearch = ref(true)
 
@@ -101,37 +109,34 @@ const queryParams = reactive({
   dateRange: undefined as string[] | undefined,
 })
 
-const mockData: FollowUp[] = [
-  { id: 1, customerName: '华为技术', content: '与王总沟通CRM系统升级需求，客户对数据安全模块非常关注，要求提供等保三级认证方案。已约定下周三进行产品演示。', type: 'visit', creatorName: '张销售', createdAt: '2026-05-28 14:20', nextContactAt: '2026-06-03' },
-  { id: 2, customerName: '阿里巴巴', content: '电话沟通年度运维合同续签事宜，客户对当前服务表示满意，希望价格上给予一定折扣。已申请销售总监特批。', type: 'call', creatorName: '张销售', createdAt: '2026-05-27 09:10', nextContactAt: '2026-06-01' },
-  { id: 3, customerName: '腾讯科技', content: '发送数据中台解决方案白皮书及成功案例集，客户表示会组织内部评审。预计两周内反馈初步意见。', type: 'mail', creatorName: '李销售', createdAt: '2026-05-26 16:30', nextContactAt: '2026-06-09' },
-  { id: 4, customerName: '字节跳动', content: '参加客户组织的CRM选型交流会，会上介绍了我们的产品优势和实施案例。客户对移动端功能很感兴趣。', type: 'meeting', creatorName: '李销售', createdAt: '2026-05-25 11:00', nextContactAt: '2026-06-02' },
-  { id: 5, customerName: '小米科技', content: '拜访客户IT总监，演示了智能硬件管理平台的最新功能。客户提出了一些定制化需求，已记录并反馈给产品团队。', type: 'visit', creatorName: '王销售', createdAt: '2026-05-24 15:45', nextContactAt: '2026-06-05' },
-  { id: 6, customerName: '比亚迪', content: '回访客户了解系统使用情况，客户反馈整体满意度较高，希望增加供应链管理模块。已记录需求。', type: 'call', creatorName: '张销售', createdAt: '2026-05-23 10:30', nextContactAt: '2026-06-10' },
-  { id: 7, customerName: '京东集团', content: '发送产品报价方案及技术参数说明，客户表示需要与财务部门确认预算，预计下周回复。', type: 'mail', creatorName: '王销售', createdAt: '2026-05-22 14:00', nextContactAt: '2026-05-29' },
-  { id: 8, customerName: '华为技术', content: '电话确认下周产品演示的时间安排，客户协调了CTO和业务总监共同参加。演示环境已准备就绪。', type: 'call', creatorName: '张销售', createdAt: '2026-05-21 09:30', nextContactAt: '2026-06-03' },
-]
-
 function handleSearch() { queryParams.page = 1; fetchData() }
-function handleReset() { Object.assign(queryParams, { keywords: '', type: undefined, dateRange: undefined, page: 1 }); fetchData() }
+function handleReset() {
+  Object.assign(queryParams, { keywords: '', type: undefined, dateRange: undefined, page: 1 })
+  fetchData()
+}
 function handleAdd() { ElMessage.info('功能开发中') }
+
+async function handleDelete(row: FollowUpRecord) {
+  try {
+    await deleteFollowUp(row.id)
+    ElMessage.success('删除成功')
+    fetchData()
+  } catch { /* handled by interceptor */ }
+}
 
 async function fetchData() {
   loading.value = true
   try {
-    await new Promise(r => setTimeout(r, 300))
-    let list = [...mockData]
-    if (queryParams.keywords) {
-      const kw = queryParams.keywords!
-      list = list.filter(i => i.customerName.includes(kw) || i.content.includes(kw))
-    }
-    if (queryParams.type) list = list.filter(i => i.type === queryParams.type)
+    const params: Record<string, any> = { page: queryParams.page, size: queryParams.size }
+    if (queryParams.keywords) params.keywords = queryParams.keywords
+    if (queryParams.type) params.type = queryParams.type
     if (queryParams.dateRange && queryParams.dateRange.length === 2) {
-      const [start, end] = queryParams.dateRange
-      list = list.filter(i => i.createdAt.slice(0, 10) >= start && i.createdAt.slice(0, 10) <= end)
+      params.startDate = queryParams.dateRange[0]
+      params.endDate = queryParams.dateRange[1]
     }
-    followUpList.value = list
-    total.value = list.length
+    const res = await getFollowUpPage(params as any)
+    followUpList.value = (res.data.records || []) as FollowUpRecord[]
+    total.value = Number(res.data.total ?? 0)
   } finally { loading.value = false }
 }
 

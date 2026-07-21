@@ -95,7 +95,7 @@ mp:
 
 # SiliconFlow AI 配置
 siliconflow:
-  api-key: sk-dlmyuebxlevmsujrzmrqojtgbeeplxsgijkizsmsxgfcbnng  # 替换为实际 API Key
+  api-key: xxxxxxxxxxxxxx  # 替换为实际 API Key
   base-url: https://api.siliconflow.cn/v1
   model: deepseek-ai/DeepSeek-V4-Flash
   temperature: 0.7
@@ -120,12 +120,8 @@ logging:
     org.springframework.security: warn
 
 # 文件存储
-crm:
-  storage:
-    type: local          # local | minio
-    local-path: ./uploads
-    # minio:
-    #   endpoint: http://localhost:9000
-    #   access-key: minioadmin
-    #   secret-key: minioadmin
-    #   bucket: crm-files
+  minio:
+    endpoint: http://localhost:9000
+    access-key: admin
+    secret-key: admin123456
+    bucket-name: crm-files

@@ -115,7 +115,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="预览图" prop="previewImage">
-              <el-input v-model="form.previewImage" placeholder="图片URL" clearable />
+              <ImageUpload v-model="form.previewImage" :size="80" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -162,6 +162,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Plus, Refresh } from '@element-plus/icons-vue'
 import { FormDialog } from '@/components/common'
+import { ImageUpload } from '@/components/common'
 import { getPageTemplatePage, createPageTemplate, updatePageTemplate, deletePageTemplate, publishPageTemplate } from '@/api/modules/mall'
 
 interface PageTemplate {

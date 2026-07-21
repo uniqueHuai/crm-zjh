@@ -56,7 +56,25 @@ const routes: RouteRecordRaw[] = [
         name: 'CustomerSegment',
         component: () => import('@/views/customer/segment/index.vue'),
         meta: { title: '客户分群' }
-      }
+      },
+      {
+        path: 'level',
+        name: 'CustomerLevel',
+        component: () => import('@/views/customer/level/index.vue'),
+        meta: { title: '客户等级' }
+      },
+      {
+        path: 'auto-rule',
+        name: 'AutoTagRule',
+        component: () => import('@/views/customer/auto-rule/index.vue'),
+        meta: { title: '自动标签规则' }
+      },
+      {
+        path: 'distribution-rule',
+        name: 'DistributionRule',
+        component: () => import('@/views/customer/distribution-rule/index.vue'),
+        meta: { title: '分配规则' }
+      },
     ]
   },
   {
@@ -105,7 +123,25 @@ const routes: RouteRecordRaw[] = [
         name: 'Appointment',
         component: () => import('@/views/sales/appointment/index.vue'),
         meta: { title: '日程安排' }
-      }
+      },
+      {
+        path: 'invoice',
+        name: 'Invoice',
+        component: () => import('@/views/sales/invoice/index.vue'),
+        meta: { title: '发票管理' }
+      },
+      {
+        path: 'payment-plan',
+        name: 'PaymentPlan',
+        component: () => import('@/views/sales/payment-plan/index.vue'),
+        meta: { title: '回款计划' }
+      },
+      {
+        path: 'contract-template',
+        name: 'ContractTemplate',
+        component: () => import('@/views/sales/contract-template/index.vue'),
+        meta: { title: '合同模板' }
+      },
     ]
   },
   {

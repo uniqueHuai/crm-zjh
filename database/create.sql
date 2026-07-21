@@ -1,9 +1,3 @@
--- ============================================================================
--- CRM 系统数据库初始化脚本
--- 数据库：PostgreSQL 15+
--- 编码：UTF-8
--- ============================================================================
-
 -- 创建数据库（需要超级用户权限，实际运行时可能需要手动创建）
 -- CREATE DATABASE crm_db WITH ENCODING 'UTF8' LC_COLLATE 'zh_CN.UTF-8' LC_CTYPE 'zh_CN.UTF-8';
 
@@ -1009,7 +1003,7 @@ CREATE INDEX IF NOT EXISTS idx_appointment_customer ON crm_appointment (customer
 CREATE INDEX IF NOT EXISTS idx_appointment_owner ON crm_appointment (owner_id);
 
 -- ============================================================================
--- 第四部分：商城交易域（mall_*）
+-- 第四部分：商城交易域（mall_* / sale_* / mp_*）
 -- ============================================================================
 
 -- 4.1 SKU表（商城多规格）
@@ -1290,6 +1284,142 @@ COMMENT ON COLUMN mall_page_template.status IS '0-草稿 1-已发布';
 COMMENT ON TABLE mall_page_template IS '小程序页面模板表';
 CREATE INDEX IF NOT EXISTS idx_page_template_type ON mall_page_template (page_type);
 CREATE INDEX IF NOT EXISTS idx_page_template_status ON mall_page_template (status);
+
+-- 4.13 商城-商品分类表（小程序商城专用，区别于 crm_product_category）
+CREATE TABLE IF NOT EXISTS sale_product_category (
+    id              BIGSERIAL PRIMARY KEY,
+    name            VARCHAR(100) NOT NULL,
+    parent_id       BIGINT,
+    icon            VARCHAR(500),
+    sort_order      INT DEFAULT 0,
+    status          SMALLINT NOT NULL DEFAULT 1,
+    created_by      BIGINT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_by      BIGINT,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at      TIMESTAMPTZ
+);
+COMMENT ON TABLE sale_product_category IS '商城-商品分类表';
+CREATE INDEX IF NOT EXISTS idx_sale_category_parent ON sale_product_category (parent_id);
+
+-- 4.14 商城-商品表（小程序商城专用，区别于 crm_sales_product）
+CREATE TABLE IF NOT EXISTS sale_product (
+    id              BIGSERIAL PRIMARY KEY,
+    category_id     BIGINT,
+    name            VARCHAR(200) NOT NULL,
+    description     TEXT,
+    cover_image     VARCHAR(500),
+    images          JSONB,
+    standard_price  DECIMAL(18,2) DEFAULT 0,
+    cost_price      DECIMAL(18,2),
+    unit            VARCHAR(20),
+    sort_order      INT DEFAULT 0,
+    status          SMALLINT NOT NULL DEFAULT 1,
+    ext_json        JSONB,
+    created_by      BIGINT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_by      BIGINT,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at      TIMESTAMPTZ
+);
+COMMENT ON TABLE sale_product IS '商城-商品表';
+CREATE INDEX IF NOT EXISTS idx_sale_product_category ON sale_product (category_id);
+CREATE INDEX IF NOT EXISTS idx_sale_product_name ON sale_product USING gin (name gin_trgm_ops);
+
+-- 4.15 小程序会话表
+CREATE TABLE IF NOT EXISTS mp_session (
+    id              BIGSERIAL PRIMARY KEY,
+    customer_id     BIGINT NOT NULL,
+    openid          VARCHAR(100) NOT NULL UNIQUE,
+    unionid         VARCHAR(100),
+    token           VARCHAR(500),
+    token_expire_at TIMESTAMPTZ,
+    last_login_at   TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE mp_session IS '小程序会话表';
+CREATE INDEX IF NOT EXISTS idx_mp_session_customer ON mp_session (customer_id);
+CREATE INDEX IF NOT EXISTS idx_mp_session_openid ON mp_session (openid);
+
+-- 4.16 小程序收货地址表
+CREATE TABLE IF NOT EXISTS mp_address (
+    id              BIGSERIAL PRIMARY KEY,
+    customer_id     BIGINT NOT NULL,
+    receiver_name   VARCHAR(100) NOT NULL,
+    receiver_phone  VARCHAR(20) NOT NULL,
+    province        VARCHAR(50),
+    city            VARCHAR(50),
+    district        VARCHAR(50),
+    detail_address  VARCHAR(500) NOT NULL,
+    is_default      BOOLEAN NOT NULL DEFAULT FALSE,
+    created_by      BIGINT,
+    updated_by      BIGINT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at      TIMESTAMPTZ
+);
+COMMENT ON TABLE mp_address IS '小程序收货地址表';
+CREATE INDEX IF NOT EXISTS idx_mp_address_customer ON mp_address (customer_id);
+
+-- 4.17 分销商表
+CREATE TABLE IF NOT EXISTS crm_distributor (
+    id              BIGSERIAL PRIMARY KEY,
+    user_id         BIGINT NOT NULL,
+    parent_id       BIGINT,
+    level           VARCHAR(20) DEFAULT 'basic',
+    total_commission DECIMAL(18,2) DEFAULT 0,
+    withdrawable    DECIMAL(18,2) DEFAULT 0,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE crm_distributor IS '分销商表';
+COMMENT ON COLUMN crm_distributor.level IS 'basic/silver/gold';
+CREATE INDEX IF NOT EXISTS idx_distributor_user ON crm_distributor (user_id);
+CREATE INDEX IF NOT EXISTS idx_distributor_parent ON crm_distributor (parent_id);
+
+-- 4.18 佣金记录表
+CREATE TABLE IF NOT EXISTS crm_commission (
+    id              BIGSERIAL PRIMARY KEY,
+    distributor_id  BIGINT NOT NULL,
+    order_id        BIGINT NOT NULL,
+    amount          DECIMAL(18,2) NOT NULL,
+    rate            DECIMAL(5,4),
+    status          VARCHAR(20) NOT NULL DEFAULT 'pending',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE crm_commission IS '佣金记录表';
+COMMENT ON COLUMN crm_commission.status IS 'pending-待结算 settled-已结算 cancelled-已取消';
+CREATE INDEX IF NOT EXISTS idx_commission_distributor ON crm_commission (distributor_id);
+CREATE INDEX IF NOT EXISTS idx_commission_order ON crm_commission (order_id);
+
+-- 4.19 拼团记录表
+CREATE TABLE IF NOT EXISTS mp_group_buy (
+    id              BIGSERIAL PRIMARY KEY,
+    activity_id     BIGINT NOT NULL,
+    product_id      BIGINT NOT NULL,
+    sku_id          BIGINT,
+    leader_id       BIGINT NOT NULL,
+    min_count       INT NOT NULL DEFAULT 2,
+    current_count   INT NOT NULL DEFAULT 1,
+    start_time      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    end_time        TIMESTAMPTZ NOT NULL,
+    status          VARCHAR(20) NOT NULL DEFAULT 'pending',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON COLUMN mp_group_buy.status IS 'pending-拼团中 success-已成团 fail-已失败';
+COMMENT ON TABLE mp_group_buy IS '拼团记录表';
+CREATE INDEX IF NOT EXISTS idx_mp_group_buy_activity ON mp_group_buy (activity_id);
+CREATE INDEX IF NOT EXISTS idx_mp_group_buy_leader ON mp_group_buy (leader_id);
+
+-- 4.20 拼团成员表
+CREATE TABLE IF NOT EXISTS mp_group_buy_member (
+    id              BIGSERIAL PRIMARY KEY,
+    group_id        BIGINT NOT NULL,
+    customer_id     BIGINT NOT NULL,
+    order_id        BIGINT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE mp_group_buy_member IS '拼团成员表';
+CREATE INDEX IF NOT EXISTS idx_mp_group_member_group ON mp_group_buy_member (group_id);
 
 -- ============================================================================
 -- 第五部分：办公协同域（coll_* / wecom_*）
@@ -1588,6 +1718,21 @@ ALTER TABLE mall_refund ADD CONSTRAINT fk_refund_order FOREIGN KEY (order_id) RE
 ALTER TABLE mall_activity_product ADD CONSTRAINT fk_act_product_activity FOREIGN KEY (activity_id) REFERENCES mall_activity(id) ON DELETE CASCADE;
 ALTER TABLE mall_activity_product ADD CONSTRAINT fk_act_product_product FOREIGN KEY (product_id) REFERENCES crm_sales_product(id);
 
+-- 小程序模块外键约束
+ALTER TABLE mp_session ADD CONSTRAINT fk_mp_session_customer FOREIGN KEY (customer_id) REFERENCES crm_customer(id) ON DELETE CASCADE;
+ALTER TABLE mp_address ADD CONSTRAINT fk_mp_address_customer FOREIGN KEY (customer_id) REFERENCES crm_customer(id) ON DELETE CASCADE;
+ALTER TABLE crm_distributor ADD CONSTRAINT fk_distributor_user FOREIGN KEY (user_id) REFERENCES crm_customer(id) ON DELETE CASCADE;
+ALTER TABLE crm_distributor ADD CONSTRAINT fk_distributor_parent FOREIGN KEY (parent_id) REFERENCES crm_distributor(id);
+ALTER TABLE crm_commission ADD CONSTRAINT fk_commission_distributor FOREIGN KEY (distributor_id) REFERENCES crm_distributor(id) ON DELETE CASCADE;
+ALTER TABLE crm_commission ADD CONSTRAINT fk_commission_order FOREIGN KEY (order_id) REFERENCES mall_order(id) ON DELETE CASCADE;
+ALTER TABLE mp_group_buy ADD CONSTRAINT fk_group_buy_activity FOREIGN KEY (activity_id) REFERENCES mall_activity(id);
+ALTER TABLE mp_group_buy ADD CONSTRAINT fk_group_buy_product FOREIGN KEY (product_id) REFERENCES sale_product(id);
+ALTER TABLE mp_group_buy ADD CONSTRAINT fk_group_buy_sku FOREIGN KEY (sku_id) REFERENCES mall_sku(id);
+ALTER TABLE mp_group_buy ADD CONSTRAINT fk_group_buy_leader FOREIGN KEY (leader_id) REFERENCES crm_customer(id);
+ALTER TABLE mp_group_buy_member ADD CONSTRAINT fk_group_member_group FOREIGN KEY (group_id) REFERENCES mp_group_buy(id) ON DELETE CASCADE;
+ALTER TABLE mp_group_buy_member ADD CONSTRAINT fk_group_member_customer FOREIGN KEY (customer_id) REFERENCES crm_customer(id);
+ALTER TABLE mp_group_buy_member ADD CONSTRAINT fk_group_member_order FOREIGN KEY (order_id) REFERENCES mall_order(id);
+
 ALTER TABLE coll_approval_define_step ADD CONSTRAINT fk_approval_step_define FOREIGN KEY (define_id) REFERENCES coll_approval_define(id) ON DELETE CASCADE;
 
 -- 兼容已有数据库：coll_approval_instance 补充缺失列
@@ -1621,622 +1766,8 @@ CREATE INDEX IF NOT EXISTS idx_opp_owner_stage ON crm_opportunity (owner_id, sta
 CREATE INDEX IF NOT EXISTS idx_lead_owner_status ON crm_lead (owner_id, status);
 
 -- ============================================================================
--- 第九部分：初始化数据
--- ============================================================================
 
--- 9.1 默认管理员
-INSERT INTO sys_dept (id, parent_id, name, sort_order, status) VALUES (1, 0, '总公司', 1, 1);
-
-INSERT INTO sys_user (id, username, password, real_name, dept_id, status)
-VALUES (1, 'admin', '$2a$10$YDrNOBsC0ad27KQBjuU1OekZLZQousMiQkerg5kzUJFN58LSO2/qm', '系统管理员', 1, 1);
-
--- 9.2 默认角色
-INSERT INTO sys_role (id, name, role_code, data_scope, status) VALUES
-(1, '超级管理员', 'admin', 4, 1),
-(2, '销售经理', 'sales_manager', 3, 1),
-(3, '销售', 'sales', 1, 1),
-(4, '财务', 'finance', 4, 1),
-(5, '仓管', 'warehouse', 2, 1);
-
--- 9.3 默认菜单（根目录）
-INSERT INTO sys_menu (id, parent_id, name, menu_type, route_path, component, sort_order, status) VALUES
-(1, 0, '系统管理', 'M', '/system', 'Layout', 100, 1),
-(2, 1, '用户管理', 'C', '/system/user', 'system/user/index', 1, 1),
-(3, 1, '角色管理', 'C', '/system/role', 'system/role/index', 2, 1),
-(4, 1, '菜单管理', 'C', '/system/menu', 'system/menu/index', 3, 1),
-(5, 1, '部门管理', 'C', '/system/dept', 'system/dept/index', 4, 1),
-(6, 1, '字典管理', 'C', '/system/dict', 'system/dict/index', 5, 1),
-(7, 1, '配置管理', 'C', '/system/config', 'system/config/index', 6, 1),
-(8, 1, '操作日志', 'C', '/system/log', 'system/log/index', 7, 1),
-(9, 0, '客户管理', 'M', '/customer', 'Layout', 10, 1),
-(10, 9, '线索管理', 'C', '/customer/lead', 'customer/lead/index', 1, 1),
-(11, 9, '客户列表', 'C', '/customer/list', 'customer/list/index', 2, 1),
-(12, 9, '标签管理', 'C', '/customer/tag', 'customer/tag/index', 3, 1),
-(13, 9, '客户分群', 'C', '/customer/segment', 'customer/segment/index', 4, 1),
-(14, 9, '联系人', 'C', '/customer/contact', 'customer/contact/index', 5, 1),
-(15, 0, '销售管理', 'M', '/sales', 'Layout', 20, 1),
-(16, 15, '商机看板', 'C', '/sales/pipeline', 'sales/pipeline/index', 1, 1),
-(17, 15, '跟进记录', 'C', '/sales/follow-up', 'sales/follow-up/index', 2, 1),
-(18, 15, '报价管理', 'C', '/sales/quotation', 'sales/quotation/index', 3, 1),
-(19, 15, '合同管理', 'C', '/sales/contract', 'sales/contract/index', 4, 1),
-(20, 15, '回款与发票', 'C', '/sales/invoice', 'sales/invoice/index', 5, 1),
-(21, 0, '商城管理', 'M', '/mall', 'Layout', 30, 1),
-(22, 21, '商品管理', 'C', '/mall/product', 'mall/product/index', 1, 1),
-(23, 21, '订单管理', 'C', '/mall/order', 'mall/order/index', 2, 1),
-(24, 21, '优惠券', 'C', '/mall/coupon', 'mall/coupon/index', 3, 1),
-(31, 21, '营销活动', 'C', '/mall/activity', 'mall/activity/index', 4, 1),
-(36, 21, '小程序页面', 'C', '/mall/page', 'mall/page/index', 5, 1),
-(25, 0, '数据分析', 'M', '/report', 'Layout', 40, 1),
-(26, 25, '核心看板', 'C', '/report/dashboard', 'report/dashboard/index', 1, 1),
-(27, 25, '自定义报表', 'C', '/report/custom', 'report/custom/index', 2, 1),
-(28, 0, '协同办公', 'M', '/collaboration', 'Layout', 50, 1),
-(29, 28, '审批管理', 'C', '/collaboration/approval', 'collaboration/approval/index', 1, 1),
-(30, 28, '服务工单', 'C', '/collaboration/ticket', 'collaboration/ticket/index', 2, 1);
-
--- 9.4 管理员角色绑定
-INSERT INTO sys_user_role (user_id, role_id) VALUES (1, 1);
-
--- 9.5 默认系统配置
-INSERT INTO sys_config (config_key, config_name, config_value, config_type, is_public, remark) VALUES
-('lead.pool.return.hours', '线索回收时长（小时）', '48', 1, false, '超时未跟进的线索自动回池'),
-('lead.duplicate.strategy', '线索查重策略', 'phone', 1, false, 'phone-仅手机号 unionid-微信UnionID both-两者'),
-('customer.level.evaluate.cycle', '客户等级评估周期', 'monthly', 1, false, 'daily/weekly/monthly'),
-('customer.sleeping.days', '沉睡客户判定天数', '90', 1, false, '超过N天未消费标记为沉睡'),
-('appointment.remind.before', '日程提醒提前N分钟', '30', 1, false, '默认提前30分钟提醒'),
-('system.captcha.enable', '登录验证码开关', 'true', 1, false, 'true-开启 false-关闭'),
-('system.password.error.limit', '密码错误锁定次数', '5', 1, false, '超过次数后账户临时锁定'),
-('system.password.error.lock.minutes', '密码错误锁定时间（分钟）', '30', 1, false, '锁定时长');
-
--- 9.6 默认字典数据
-INSERT INTO sys_dict_type (type_code, type_name, status) VALUES
-('lead_source', '线索来源', 1),
-('lead_status', '线索状态', 1),
-('opportunity_stage', '商机阶段', 1),
-('customer_level', '客户等级', 1),
-('follow_up_type', '跟进类型', 1),
-('contract_status', '合同状态', 1),
-('invoice_type', '发票类型', 1),
-('ticket_type', '工单类型', 1),
-('ticket_priority', '工单优先级', 1);
-
-INSERT INTO sys_dict_item (type_code, item_code, item_value, sort_order) VALUES
-('lead_source', 'mini_program', '小程序注册', 1),
-('lead_source', 'ad_landing', '广告落地页', 2),
-('lead_source', 'offline', '线下活动', 3),
-('lead_source', 'manual_input', '手工录入', 4),
-('lead_source', 'referral', '朋友推荐', 5),
-('lead_status', 'pending', '待跟进', 1),
-('lead_status', 'following', '跟进中', 2),
-('lead_status', 'converted', '已转换', 3),
-('lead_status', 'invalid', '无效', 4),
-('lead_status', 'merged', '已合并', 5),
-('follow_up_type', 'call', '电话', 1),
-('follow_up_type', 'visit', '拜访', 2),
-('follow_up_type', 'online', '线上', 3),
-('follow_up_type', 'chat', '聊天', 4),
-('invoice_type', 'vat_special', '增值税专用发票', 1),
-('invoice_type', 'vat_normal', '增值税普通发票', 2),
-('invoice_type', 'electronic', '电子发票', 3),
-('ticket_type', 'repair', '报修', 1),
-('ticket_type', 'install', '安装', 2),
-('ticket_type', 'complaint', '投诉', 3),
-('ticket_priority', 'low', '低', 1),
-('ticket_priority', 'normal', '中', 2),
-('ticket_priority', 'urgent', '高', 3),
-('ticket_priority', 'critical', '紧急', 4);
-
--- 9.7 默认销售阶段
-INSERT INTO crm_opportunity_stage (id, name, sort_order, probability, category) VALUES
-(1, '初步接触', 1, 10, 'open'),
-(2, '需求分析', 2, 25, 'open'),
-(3, '方案报价', 3, 50, 'open'),
-(4, '商务谈判', 4, 75, 'open'),
-(5, '赢单', 5, 100, 'win'),
-(6, '输单', 6, 0, 'lose');
-
--- 9.8 默认产品分类
-INSERT INTO crm_product_category (id, name, parent_id, sort_order, status, created_by) VALUES
-(1, '软件产品', NULL, 1, 1, 1),
-(2, '硬件设备', NULL, 2, 1, 1),
-(3, '技术服务', NULL, 3, 1, 1);
-
--- 9.9 默认产品
-INSERT INTO crm_sales_product (id, category_id, name, unit, standard_price, status, created_by) VALUES
-(1, 1, 'CRM标准版', '套', 50000.00, 1, 1),
-(2, 1, 'CRM企业版', '套', 150000.00, 1, 1),
-(3, 2, '服务器', '台', 30000.00, 1, 1),
-(4, 3, '实施服务', '人/天', 3000.00, 1, 1),
-(5, 3, '培训服务', '人/天', 2000.00, 1, 1);
-
--- 9.10 默认客户等级
-INSERT INTO crm_customer_level (id, name, min_amount, max_amount, min_order_count, sort_order) VALUES
-(1, '普通客户', 0, 9999.99, 0, 1),
-(2, '银卡客户', 10000, 49999.99, 2, 2),
-(3, '金卡客户', 50000, 199999.99, 5, 3),
-(4, '钻石客户', 200000, 99999999.99, 10, 4);
-
--- 9.11 按钮权限（与后端 @PreAuthorize 对应）
-INSERT INTO sys_menu (id, parent_id, name, menu_type, permission_code, sort_order, status) VALUES
-
--- 系统管理 - 用户管理
-(1001, 2, '用户列表', 'F', 'system:user:list', 1, 1),
-(1002, 2, '用户查询', 'F', 'system:user:query', 2, 1),
-(1003, 2, '新增用户', 'F', 'system:user:create', 3, 1),
-(1004, 2, '编辑用户', 'F', 'system:user:edit', 4, 1),
-(1005, 2, '删除用户', 'F', 'system:user:delete', 5, 1),
-(1006, 2, '导入用户', 'F', 'system:user:import', 6, 1),
-(1007, 2, '导出用户', 'F', 'system:user:export', 7, 1),
-
--- 系统管理 - 角色管理
-(1008, 3, '角色列表', 'F', 'system:role:list', 1, 1),
-(1009, 3, '新增角色', 'F', 'system:role:create', 2, 1),
-(1010, 3, '角色查询', 'F', 'system:role:query', 3, 1),
-(1011, 3, '编辑角色', 'F', 'system:role:edit', 4, 1),
-(1012, 3, '删除角色', 'F', 'system:role:delete', 5, 1),
-
--- 系统管理 - 菜单管理
-(1013, 4, '菜单列表', 'F', 'system:menu:list', 1, 1),
-(1014, 4, '新增菜单', 'F', 'system:menu:create', 2, 1),
-(1015, 4, '编辑菜单', 'F', 'system:menu:edit', 3, 1),
-(1016, 4, '删除菜单', 'F', 'system:menu:delete', 4, 1),
-
--- 系统管理 - 部门管理
-(1017, 5, '部门列表', 'F', 'system:dept:list', 1, 1),
-(1018, 5, '新增部门', 'F', 'system:dept:create', 2, 1),
-(1019, 5, '编辑部门', 'F', 'system:dept:edit', 3, 1),
-(1020, 5, '删除部门', 'F', 'system:dept:delete', 4, 1),
-
--- 系统管理 - 字典管理
-(1021, 6, '字典列表', 'F', 'system:dict:list', 1, 1),
-(1022, 6, '新增字典', 'F', 'system:dict:create', 2, 1),
-(1023, 6, '字典查询', 'F', 'system:dict:query', 3, 1),
-(1024, 6, '编辑字典', 'F', 'system:dict:edit', 4, 1),
-(1025, 6, '删除字典', 'F', 'system:dict:delete', 5, 1),
-
--- 系统管理 - 配置管理
-(1026, 7, '配置列表', 'F', 'system:config:list', 1, 1),
-(1027, 7, '配置查询', 'F', 'system:config:query', 2, 1),
-(1028, 7, '编辑配置', 'F', 'system:config:edit', 3, 1),
-
--- 系统管理 - 操作日志
-(1029, 8, '日志列表', 'F', 'system:log:list', 1, 1),
-(1030, 8, '日志查询', 'F', 'system:log:query', 2, 1),
-(1031, 8, '删除日志', 'F', 'system:log:delete', 3, 1),
-(1032, 8, '导出日志', 'F', 'system:log:export', 4, 1),
-
--- 系统管理 - API密钥
-(1033, 1, 'API密钥列表', 'F', 'system:api-key:list', 1, 1),
-(1034, 1, '创建API密钥', 'F', 'system:api-key:create', 2, 1),
-(1035, 1, '编辑API密钥', 'F', 'system:api-key:edit', 3, 1),
-(1036, 1, '删除API密钥', 'F', 'system:api-key:delete', 4, 1),
-
--- 系统管理 - 消息与文件
-(1037, 1, '发送消息', 'F', 'system:message:send', 1, 1),
-(1038, 1, '删除文件', 'F', 'system:file:delete', 2, 1),
-
--- 客户管理 - 线索管理
-(1039, 10, '线索列表', 'F', 'customer:lead:list', 1, 1),
-(1040, 10, '新增线索', 'F', 'customer:lead:create', 2, 1),
-(1041, 10, '线索查询', 'F', 'customer:lead:query', 3, 1),
-(1042, 10, '编辑线索', 'F', 'customer:lead:edit', 4, 1),
-(1043, 10, '删除线索', 'F', 'customer:lead:delete', 5, 1),
-(1044, 10, '导入线索', 'F', 'customer:lead:import', 6, 1),
-(1045, 10, '转换线索', 'F', 'customer:lead:convert', 7, 1),
-(1046, 10, '分配线索', 'F', 'customer:lead:distribute', 8, 1),
-
--- 客户管理 - 客户列表
-(1047, 11, '客户列表', 'F', 'customer:customer:list', 1, 1),
-(1048, 11, '新增客户', 'F', 'customer:customer:create', 2, 1),
-(1049, 11, '客户查询', 'F', 'customer:customer:query', 3, 1),
-(1050, 11, '编辑客户', 'F', 'customer:customer:edit', 4, 1),
-(1051, 11, '删除客户', 'F', 'customer:customer:delete', 5, 1),
-(1052, 11, '导入客户', 'F', 'customer:customer:import', 6, 1),
-(1053, 11, '导出客户', 'F', 'customer:customer:export', 7, 1),
-
--- 客户管理 - 标签管理
-(1054, 12, '标签列表', 'F', 'customer:tag:list', 1, 1),
-(1055, 12, '新增标签', 'F', 'customer:tag:create', 2, 1),
-(1056, 12, '编辑标签', 'F', 'customer:tag:edit', 3, 1),
-(1057, 12, '删除标签', 'F', 'customer:tag:delete', 4, 1),
-(1058, 12, '自动打标规则', 'F', 'customer:tag:auto-rule', 5, 1),
-
--- 客户管理 - 客户分群
-(1059, 13, '分群列表', 'F', 'customer:segment:list', 1, 1),
-(1060, 13, '新增分群', 'F', 'customer:segment:create', 2, 1),
-(1061, 13, '编辑分群', 'F', 'customer:segment:edit', 3, 1),
-(1062, 13, '删除分群', 'F', 'customer:segment:delete', 4, 1),
-(1063, 13, '分群查询', 'F', 'customer:segment:query', 5, 1),
-(1064, 13, '分群营销', 'F', 'customer:segment:campaign', 6, 1),
-
--- 客户管理 - 联系人
-(1065, 14, '联系人列表', 'F', 'customer:contact:list', 1, 1),
-(1066, 14, '新增联系人', 'F', 'customer:contact:create', 2, 1),
-(1067, 14, '编辑联系人', 'F', 'customer:contact:edit', 3, 1),
-(1068, 14, '删除联系人', 'F', 'customer:contact:delete', 4, 1),
-
--- 客户管理 - 分配规则
-(1069, 9, '分配规则列表', 'F', 'customer:distribution:list', 1, 1),
-(1070, 9, '新增分配规则', 'F', 'customer:distribution:create', 2, 1),
-(1071, 9, '编辑分配规则', 'F', 'customer:distribution:edit', 3, 1),
-(1072, 9, '删除分配规则', 'F', 'customer:distribution:delete', 4, 1),
-(1073, 9, '执行分配', 'F', 'customer:distribution:execute', 5, 1),
-(1074, 9, '分配规则查询', 'F', 'customer:distribution:query', 6, 1),
-
--- 客户管理 - 客户等级
-(1075, 9, '等级列表', 'F', 'customer:level:list', 7, 1),
-(1076, 9, '新增等级', 'F', 'customer:level:create', 8, 1),
-(1077, 9, '编辑等级', 'F', 'customer:level:edit', 9, 1),
-(1078, 9, '删除等级', 'F', 'customer:level:delete', 10, 1),
-(1079, 9, '等级查询', 'F', 'customer:level:query', 11, 1),
-(1080, 9, '等级评估', 'F', 'customer:level:evaluate', 12, 1),
-
--- 销售管理 - 商机看板
-(1081, 16, '商机列表', 'F', 'sales:opportunity:list', 1, 1),
-(1082, 16, '新增商机', 'F', 'sales:opportunity:create', 2, 1),
-(1083, 16, '商机查询', 'F', 'sales:opportunity:query', 3, 1),
-(1084, 16, '编辑商机', 'F', 'sales:opportunity:edit', 4, 1),
-(1085, 16, '删除商机', 'F', 'sales:opportunity:delete', 5, 1),
-(1086, 16, '阶段列表', 'F', 'sales:stage:list', 6, 1),
-(1087, 16, '新增阶段', 'F', 'sales:stage:create', 7, 1),
-(1088, 16, '编辑阶段', 'F', 'sales:stage:edit', 8, 1),
-(1089, 16, '删除阶段', 'F', 'sales:stage:delete', 9, 1),
-
--- 销售管理 - 跟进记录
-(1090, 17, '跟进列表', 'F', 'sales:followup:list', 1, 1),
-(1091, 17, '新增跟进', 'F', 'sales:followup:create', 2, 1),
-(1092, 17, '跟进查询', 'F', 'sales:followup:query', 3, 1),
-(1093, 17, '编辑跟进', 'F', 'sales:followup:edit', 4, 1),
-(1094, 17, '删除跟进', 'F', 'sales:followup:delete', 5, 1),
-
--- 销售管理 - 报价管理
-(1095, 18, '报价列表', 'F', 'sales:quotation:list', 1, 1),
-(1096, 18, '新增报价', 'F', 'sales:quotation:create', 2, 1),
-(1097, 18, '报价查询', 'F', 'sales:quotation:query', 3, 1),
-(1098, 18, '编辑报价', 'F', 'sales:quotation:edit', 4, 1),
-(1099, 18, '删除报价', 'F', 'sales:quotation:delete', 5, 1),
-(1100, 18, '报价审批', 'F', 'sales:quotation:approve', 6, 1),
-(1101, 18, '导出报价', 'F', 'sales:quotation:export', 7, 1),
-(1102, 18, '产品列表', 'F', 'sales:product:list', 8, 1),
-(1103, 18, '新增产品', 'F', 'sales:product:create', 9, 1),
-(1104, 18, '编辑产品', 'F', 'sales:product:edit', 10, 1),
-(1105, 18, '删除产品', 'F', 'sales:product:delete', 11, 1),
-(1106, 18, '产品分类列表', 'F', 'sales:category:list', 12, 1),
-(1107, 18, '新增产品分类', 'F', 'sales:category:create', 13, 1),
-(1108, 18, '编辑产品分类', 'F', 'sales:category:edit', 14, 1),
-(1109, 18, '删除产品分类', 'F', 'sales:category:delete', 15, 1),
-
--- 销售管理 - 合同管理
-(1110, 19, '合同列表', 'F', 'sales:contract:list', 1, 1),
-(1111, 19, '新增合同', 'F', 'sales:contract:create', 2, 1),
-(1112, 19, '合同查询', 'F', 'sales:contract:query', 3, 1),
-(1113, 19, '编辑合同', 'F', 'sales:contract:edit', 4, 1),
-(1114, 19, '删除合同', 'F', 'sales:contract:delete', 5, 1),
-(1115, 19, '回款计划列表', 'F', 'sales:payment:list', 6, 1),
-(1116, 19, '新增回款计划', 'F', 'sales:payment:create', 7, 1),
-(1117, 19, '编辑回款计划', 'F', 'sales:payment:edit', 8, 1),
-(1118, 19, '删除回款计划', 'F', 'sales:payment:delete', 9, 1),
-(1119, 19, '合同模板列表', 'F', 'sales:template:list', 10, 1),
-(1120, 19, '新增合同模板', 'F', 'sales:template:create', 11, 1),
-(1121, 19, '编辑合同模板', 'F', 'sales:template:edit', 12, 1),
-(1122, 19, '删除合同模板', 'F', 'sales:template:delete', 13, 1),
-
--- 销售管理 - 回款与发票
-(1123, 20, '发票列表', 'F', 'sales:invoice:list', 1, 1),
-(1124, 20, '新增发票', 'F', 'sales:invoice:create', 2, 1),
-(1125, 20, '开票', 'F', 'sales:invoice:issue', 3, 1),
-(1126, 20, '发货', 'F', 'sales:invoice:ship', 4, 1),
-(1127, 20, '确认', 'F', 'sales:invoice:confirm', 5, 1),
-(1128, 20, '取消', 'F', 'sales:invoice:cancel', 6, 1),
-(1129, 20, '发票查询', 'F', 'sales:invoice:query', 7, 1),
-
--- 销售管理 - 日程
-(1130, 15, '日程列表', 'F', 'sales:appointment:list', 1, 1),
-(1131, 15, '新增日程', 'F', 'sales:appointment:create', 2, 1),
-(1132, 15, '编辑日程', 'F', 'sales:appointment:edit', 3, 1),
-(1133, 15, '删除日程', 'F', 'sales:appointment:delete', 4, 1),
-
--- 商城管理 - 商品管理
-(1134, 22, '商品列表', 'F', 'mall:product:list', 1, 1),
-(1135, 22, '新增商品', 'F', 'mall:product:create', 2, 1),
-(1136, 22, '商品查询', 'F', 'mall:product:query', 3, 1),
-(1137, 22, '编辑商品', 'F', 'mall:product:edit', 4, 1),
-(1138, 22, '删除商品', 'F', 'mall:product:delete', 5, 1),
-(1139, 22, '导入商品', 'F', 'mall:product:import', 6, 1),
-(1140, 22, '导出商品', 'F', 'mall:product:export', 7, 1),
-(1141, 22, '分类列表', 'F', 'mall:category:list', 8, 1),
-(1142, 22, '新增分类', 'F', 'mall:category:create', 9, 1),
-(1143, 22, '编辑分类', 'F', 'mall:category:edit', 10, 1),
-(1144, 22, '删除分类', 'F', 'mall:category:delete', 11, 1),
-
--- 商城管理 - 订单管理
-(1145, 23, '订单列表', 'F', 'mall:order:list', 1, 1),
-(1146, 23, '订单查询', 'F', 'mall:order:query', 2, 1),
-(1147, 23, '编辑订单', 'F', 'mall:order:edit', 3, 1),
-
--- 商城管理 - 优惠券
-(1148, 24, '优惠券列表', 'F', 'mall:coupon:list', 1, 1),
-(1149, 24, '新增优惠券', 'F', 'mall:coupon:create', 2, 1),
-(1150, 24, '编辑优惠券', 'F', 'mall:coupon:edit', 3, 1),
-(1151, 24, '删除优惠券', 'F', 'mall:coupon:delete', 4, 1),
-(1152, 24, '发放优惠券', 'F', 'mall:coupon:distribute', 5, 1),
-
--- 商城管理 - 分销
-(1153, 21, '分销列表', 'F', 'mall:distribution:list', 1, 1),
-(1154, 21, '编辑分销', 'F', 'mall:distribution:edit', 2, 1),
-
--- 商城管理 - 营销活动
-(1192, 31, '活动列表', 'F', 'mall:activity:list', 1, 1),
-(1193, 31, '新增活动', 'F', 'mall:activity:create', 2, 1),
-(1194, 31, '活动查询', 'F', 'mall:activity:query', 3, 1),
-(1195, 31, '编辑活动', 'F', 'mall:activity:edit', 4, 1),
-(1196, 31, '删除活动', 'F', 'mall:activity:delete', 5, 1),
-
--- 商城管理 - 小程序页面
-(1203, 36, '页面列表', 'F', 'mall:page-template:list', 1, 1),
-(1204, 36, '新增页面', 'F', 'mall:page-template:create', 2, 1),
-(1205, 36, '页面查询', 'F', 'mall:page-template:query', 3, 1),
-(1206, 36, '编辑页面', 'F', 'mall:page-template:edit', 4, 1),
-(1207, 36, '删除页面', 'F', 'mall:page-template:delete', 5, 1),
-
--- 数据分析 - 核心看板
-(1155, 26, '看板查询', 'F', 'report:dashboard:query', 1, 1),
-(1156, 26, '看板编辑', 'F', 'report:dashboard:edit', 2, 1),
-
--- 数据分析 - 自定义报表
-(1157, 27, '报表列表', 'F', 'report:custom-report:list', 1, 1),
-(1158, 27, '新增报表', 'F', 'report:custom-report:create', 2, 1),
-(1159, 27, '报表查询', 'F', 'report:custom-report:query', 3, 1),
-(1160, 27, '导出报表', 'F', 'report:custom-report:export', 4, 1),
-(1161, 27, '编辑报表', 'F', 'report:custom-report:edit', 5, 1),
-(1162, 27, '删除报表', 'F', 'report:custom-report:delete', 6, 1),
-
--- 协同办公 - 审批管理
-(1163, 29, '审批定义列表', 'F', 'collaboration:approval-define:list', 1, 1),
-(1164, 29, '新增审批定义', 'F', 'collaboration:approval-define:create', 2, 1),
-(1165, 29, '审批定义查询', 'F', 'collaboration:approval-define:query', 3, 1),
-(1166, 29, '编辑审批定义', 'F', 'collaboration:approval-define:edit', 4, 1),
-(1167, 29, '删除审批定义', 'F', 'collaboration:approval-define:delete', 5, 1),
-(1168, 29, '审批实例列表', 'F', 'collaboration:approval-instance:list', 6, 1),
-(1169, 29, '发起审批', 'F', 'collaboration:approval-instance:create', 7, 1),
-(1170, 29, '审批查询', 'F', 'collaboration:approval-instance:query', 8, 1),
-(1171, 29, '审批通过', 'F', 'collaboration:approval-instance:approve', 9, 1),
-(1172, 29, '审批拒绝', 'F', 'collaboration:approval-instance:reject', 10, 1),
-(1173, 29, '撤回审批', 'F', 'collaboration:approval-instance:recall', 11, 1),
-
--- 协同办公 - 服务工单
-(1174, 30, '工单列表', 'F', 'collaboration:ticket:list', 1, 1),
-(1175, 30, '创建工单', 'F', 'collaboration:ticket:create', 2, 1),
-(1176, 30, '工单查询', 'F', 'collaboration:ticket:query', 3, 1),
-(1177, 30, '编辑工单', 'F', 'collaboration:ticket:edit', 4, 1),
-(1178, 30, '删除工单', 'F', 'collaboration:ticket:delete', 5, 1),
-(1179, 30, '分配工单', 'F', 'collaboration:ticket:assign', 6, 1),
-(1180, 30, '接单', 'F', 'collaboration:ticket:accept', 7, 1),
-(1181, 30, '开始处理', 'F', 'collaboration:ticket:start', 8, 1),
-(1182, 30, '完成工单', 'F', 'collaboration:ticket:complete', 9, 1),
-(1183, 30, '评价工单', 'F', 'collaboration:ticket:rate', 10, 1),
-(1184, 30, '退款列表', 'F', 'collaboration:refund:list', 11, 1),
-(1185, 30, '退款查询', 'F', 'collaboration:refund:query', 12, 1),
-(1186, 30, '退款审批', 'F', 'collaboration:refund:approve', 13, 1),
-(1187, 30, '退款驳回', 'F', 'collaboration:refund:reject', 14, 1),
-(1188, 30, '退款确认', 'F', 'collaboration:refund:receive', 15, 1),
-(1189, 30, '退款完成', 'F', 'collaboration:refund:complete', 16, 1),
-
--- 协同办公 - 企微
-(1190, 28, '绑定企微', 'F', 'collaboration:wecom:bind', 1, 1),
-(1191, 28, '发送消息', 'F', 'collaboration:wecom:send', 2, 1);
-
--- 9.12 管理员角色权限绑定（关联所有按钮权限）
-INSERT INTO sys_role_menu (role_id, menu_id) VALUES
-(1, 1001),(1, 1002),(1, 1003),(1, 1004),(1, 1005),(1, 1006),(1, 1007),
-(1, 1008),(1, 1009),(1, 1010),(1, 1011),(1, 1012),
-(1, 1013),(1, 1014),(1, 1015),(1, 1016),
-(1, 1017),(1, 1018),(1, 1019),(1, 1020),
-(1, 1021),(1, 1022),(1, 1023),(1, 1024),(1, 1025),
-(1, 1026),(1, 1027),(1, 1028),
-(1, 1029),(1, 1030),(1, 1031),(1, 1032),
-(1, 1033),(1, 1034),(1, 1035),(1, 1036),
-(1, 1037),(1, 1038),
-(1, 1039),(1, 1040),(1, 1041),(1, 1042),(1, 1043),(1, 1044),(1, 1045),(1, 1046),
-(1, 1047),(1, 1048),(1, 1049),(1, 1050),(1, 1051),(1, 1052),(1, 1053),
-(1, 1054),(1, 1055),(1, 1056),(1, 1057),(1, 1058),
-(1, 1059),(1, 1060),(1, 1061),(1, 1062),(1, 1063),(1, 1064),
-(1, 1065),(1, 1066),(1, 1067),(1, 1068),
-(1, 1069),(1, 1070),(1, 1071),(1, 1072),(1, 1073),(1, 1074),
-(1, 1075),(1, 1076),(1, 1077),(1, 1078),(1, 1079),(1, 1080),
-(1, 1081),(1, 1082),(1, 1083),(1, 1084),(1, 1085),
-(1, 1086),(1, 1087),(1, 1088),(1, 1089),
-(1, 1090),(1, 1091),(1, 1092),(1, 1093),(1, 1094),
-(1, 1095),(1, 1096),(1, 1097),(1, 1098),(1, 1099),(1, 1100),(1, 1101),
-(1, 1102),(1, 1103),(1, 1104),(1, 1105),
-(1, 1106),(1, 1107),(1, 1108),(1, 1109),
-(1, 1110),(1, 1111),(1, 1112),(1, 1113),(1, 1114),
-(1, 1115),(1, 1116),(1, 1117),(1, 1118),
-(1, 1119),(1, 1120),(1, 1121),(1, 1122),
-(1, 1123),(1, 1124),(1, 1125),(1, 1126),(1, 1127),(1, 1128),(1, 1129),
-(1, 1130),(1, 1131),(1, 1132),(1, 1133),
-(1, 1134),(1, 1135),(1, 1136),(1, 1137),(1, 1138),(1, 1139),(1, 1140),
-(1, 1141),(1, 1142),(1, 1143),(1, 1144),
-(1, 1145),(1, 1146),(1, 1147),
-(1, 1148),(1, 1149),(1, 1150),(1, 1151),(1, 1152),
-(1, 1153),(1, 1154),
-(1, 1155),(1, 1156),
-(1, 1157),(1, 1158),(1, 1159),(1, 1160),(1, 1161),(1, 1162),
-(1, 1163),(1, 1164),(1, 1165),(1, 1166),(1, 1167),
-(1, 1168),(1, 1169),(1, 1170),(1, 1171),(1, 1172),(1, 1173),
-(1, 1174),(1, 1175),(1, 1176),(1, 1177),(1, 1178),(1, 1179),(1, 1180),(1, 1181),(1, 1182),(1, 1183),
-(1, 1184),(1, 1185),(1, 1186),(1, 1187),(1, 1188),(1, 1189),
-(1, 1190),(1, 1191),
-(1, 1192),(1, 1193),(1, 1194),(1, 1195),(1, 1196),
-(1, 1203),(1, 1204),(1, 1205),(1, 1206),(1, 1207);
-
--- 绑定 小程序页面 菜单到管理员角色
-INSERT INTO sys_role_menu (role_id, menu_id) VALUES (1, 36);
-
--- 迁移：为已有数据库补充 updated_by 列
 ALTER TABLE crm_customer_level ADD COLUMN IF NOT EXISTS updated_by BIGINT;
-
--- ============================================================================
--- 第十部分：业务数据初始化（种子数据）
--- ============================================================================
-
--- 10.1 客户示例数据（owner_id=1 为 admin 用户）
-INSERT INTO crm_customer (id, name, phone, company, position, province, city, source_channel, level_id, owner_id, last_contact_at, total_consumption, order_count, created_by, created_at) VALUES
-(1, '华为技术有限公司', '13800138001', '华为技术有限公司', '企业客户', '广东省', '深圳市', 'offline', 3, 1, NOW() - INTERVAL '2 days', 158000.00, 12, 1, NOW() - INTERVAL '5 days'),
-(2, '阿里巴巴集团', '13800138002', '阿里巴巴集团', '企业客户', '浙江省', '杭州市', 'referral', 3, 1, NOW() - INTERVAL '5 days', 220000.00, 18, 1, NOW() - INTERVAL '3 days'),
-(3, '腾讯科技有限公司', '13800138003', '腾讯科技有限公司', '企业客户', '广东省', '深圳市', 'offline', 2, 1, NOW() - INTERVAL '30 days', 45000.00, 5, 1, NOW() - INTERVAL '60 days'),
-(4, '字节跳动', '13800138004', '字节跳动', '企业客户', '北京市', '北京市', 'ad_landing', 2, 1, NOW() - INTERVAL '15 days', 32000.00, 3, 1, NOW() - INTERVAL '10 days'),
-(5, '小米科技有限责任公司', '13800138005', '小米科技有限责任公司', '企业客户', '北京市', '北京市', 'referral', 1, 1, NOW() - INTERVAL '60 days', 8500.00, 2, 1, NOW() - INTERVAL '140 days'),
-(6, '比亚迪股份有限公司', '13800138006', '比亚迪股份有限公司', '企业客户', '广东省', '深圳市', 'offline', 2, 1, NOW() - INTERVAL '7 days', 28000.00, 4, 1, NOW() - INTERVAL '130 days'),
-(7, '京东集团', '13800138007', '京东集团', '企业客户', '北京市', '北京市', 'ad_landing', 1, 1, NOW() - INTERVAL '45 days', 5600.00, 1, 1, NOW() - INTERVAL '120 days'),
-(8, '网易集团', '13800138008', '网易集团', '企业客户', '广东省', '广州市', 'referral', 4, 1, NOW() - INTERVAL '3 days', 350000.00, 25, 1, NOW() - INTERVAL '110 days');
-
--- 10.2 联系人示例数据
-INSERT INTO crm_contact (customer_id, name, phone, email, position, department, is_decision_maker, is_primary, birthday, remark, created_by, created_at) VALUES
-(1, '王建国', '138****8001', 'wangjg@huawei.com', 'CTO', '技术部', TRUE, TRUE, '1985-06-15', '技术决策者，对数据安全要求高', 1, NOW()),
-(1, '陈静', '134****8006', 'chenj@huawei.com', '财务总监', '财务部', TRUE, FALSE, '1980-12-05', '预算审批关键人', 1, NOW()),
-(2, '李明芳', '139****8002', 'limf@alibaba.com', '采购总监', '采购部', TRUE, TRUE, '1982-03-22', '负责IT类采购', 1, NOW()),
-(2, '孙鹏', '133****8007', 'sunp@alibaba.com', '项目经理', '项目部', FALSE, FALSE, '1991-05-18', '项目执行层面对接', 1, NOW()),
-(3, '张伟', '137****8003', 'zhangw@tencent.com', '技术经理', '技术部', FALSE, TRUE, '1990-11-08', '技术对接人', 1, NOW()),
-(3, '周婷', '132****8008', 'zhout@tencent.com', '市场总监', '市场部', TRUE, FALSE, '1986-08-25', '市场合作决策人', 1, NOW()),
-(4, '赵晓雪', '136****8004', 'zhaoxx@bytedance.com', '运营总监', '运营部', TRUE, TRUE, '1988-07-30', NULL, 1, NOW()),
-(5, '刘洋', '135****8005', 'liuy@xiaomi.com', '产品经理', '产品部', FALSE, TRUE, '1992-09-12', '产品需求对接', 1, NOW()),
-(6, '张明', '137****8010', 'zhangm@byd.com', 'IT总监', '信息部', TRUE, TRUE, '1983-04-20', '信息化建设负责人', 1, NOW()),
-(7, '李华', '138****8011', 'lihua@jd.com', '运营经理', '运营部', FALSE, TRUE, '1993-11-01', NULL, 1, NOW()),
-(8, '王芳', '139****8012', 'wangf@163.com', '副总裁', '总裁办', TRUE, TRUE, '1979-08-15', '高层决策人', 1, NOW());
-
--- 10.3 标签示例数据
-INSERT INTO crm_tag (id, name, color, type, status, created_by, created_at) VALUES
-(1, '高活跃', '#1890ff', 'auto', 1, 1, NOW()),
-(2, '沉睡客户', '#faad14', 'auto', 1, 1, NOW()),
-(3, '价格敏感', '#ff4d4f', 'auto', 1, 1, NOW()),
-(4, '大客户', '#722ed1', 'auto', 1, 1, NOW()),
-(5, 'VIP', '#eb2f96', 'manual', 1, 1, NOW()),
-(6, '意向强烈', '#52c41a', 'manual', 1, 1, NOW()),
-(7, '需要跟进', '#fa8c16', 'manual', 1, 1, NOW()),
-(8, '已合作', '#13c2c2', 'manual', 1, 1, NOW());
-
--- 10.4 客户-标签关系示例
-INSERT INTO crm_customer_tag (customer_id, tag_id, tag_type, created_by) VALUES
-(1, 1, 'auto', 1), (1, 4, 'auto', 1), (1, 8, 'manual', 1),
-(2, 1, 'auto', 1), (2, 5, 'manual', 1), (2, 8, 'manual', 1),
-(3, 1, 'auto', 1), (3, 8, 'manual', 1),
-(4, 6, 'manual', 1), (4, 7, 'manual', 1),
-(5, 2, 'auto', 1), (5, 7, 'manual', 1),
-(6, 1, 'auto', 1), (6, 8, 'manual', 1),
-(7, 7, 'manual', 1),
-(8, 1, 'auto', 1), (8, 4, 'auto', 1), (8, 5, 'manual', 1);
-
--- 10.5 客户分群示例数据
-INSERT INTO crm_segment (id, name, conditions, is_dynamic, member_count, status, created_by, created_at) VALUES
-(1, '高价值客户', '{"logic":"and","rules":[{"field":"total_consumption","operator":"gte","value":100000}]}', TRUE, 2, 1, 1, NOW()),
-(2, '沉睡客户唤醒', '{"logic":"and","rules":[{"field":"last_contact_at","operator":"lte","value":-90},{"field":"total_consumption","operator":"gte","value":10000}]}', TRUE, 1, 1, 1, NOW()),
-(3, '待跟进客户', '{"logic":"and","rules":[{"field":"last_contact_at","operator":"lte","value":-7}]}', TRUE, 3, 1, 1, NOW()),
-(4, '本月新注册', '{"logic":"and","rules":[{"field":"created_at","operator":"gte","value":"first_day_of_month"}]}', TRUE, 0, 0, 1, NOW()),
-(5, '深圳区域客户', '{"logic":"and","rules":[{"field":"province","operator":"eq","value":"广东省"},{"field":"city","operator":"eq","value":"深圳市"}]}', TRUE, 3, 1, 1, NOW());
-
--- 10.6 分群成员示例
-INSERT INTO crm_segment_member (segment_id, customer_id, join_type) VALUES
-(1, 1, 'auto'), (1, 8, 'auto'),
-(2, 5, 'auto'),
-(3, 3, 'auto'), (3, 5, 'auto'), (3, 7, 'auto'),
-(5, 1, 'auto'), (5, 3, 'auto'), (5, 6, 'auto');
-
--- 10.7 线索示例数据
-INSERT INTO crm_lead (id, name, phone, company, position, province, city, industry, source_channel, status, owner_id, remark, created_by, created_at) VALUES
-(1, '中兴通讯', '13900010001', '中兴通讯股份有限公司', 'IT总监', '广东省', '深圳市', '通信', 'ad_landing', 'pending', 1, '官网留言咨询CRM系统', 1, NOW() - INTERVAL '3 days'),
-(2, '美团', '13900010002', '北京三快在线科技有限公司', '技术VP', '北京市', '北京市', '互联网', 'referral', 'following', 1, '朋友推荐，需尽快联系', 1, NOW() - INTERVAL '7 days'),
-(3, '中国平安', '13900010003', '中国平安保险集团', '采购经理', '广东省', '深圳市', '金融', 'mini_program', 'pending', 1, '小程序提交咨询', 1, NOW() - INTERVAL '1 days'),
-(4, '格力电器', '13900010004', '珠海格力电器股份有限公司', '信息部长', '广东省', '珠海市', '制造', 'offline', 'following', 1, '行业展会收集的名片', 1, NOW() - INTERVAL '14 days'),
-(5, '科大讯飞', '13900010005', '科大讯飞股份有限公司', '运营总监', '安徽省', '合肥市', 'AI', 'manual_input', 'following', 1, '主动来电咨询', 1, NOW() - INTERVAL '10 days'),
-(6, '滴滴出行', '13900010006', '滴滴出行科技有限公司', 'CTO', '北京市', '北京市', '互联网', 'ad_landing', 'pending', 1, NULL, 1, NOW() - INTERVAL '2 days');
-
--- 10.8 商机示例数据
-INSERT INTO crm_opportunity (id, customer_id, name, expected_amount, expected_close_date, stage_id, owner_id, pain_points, requirements, created_by, created_at) VALUES
-(1, 1, '华为-CRM企业版采购', 150000.00, NOW() + INTERVAL '60 days', 3, 1, '现有系统无法满足销售管理需求，数据孤岛严重', '需要与企业微信集成，支持定制化报表', 1, NOW() - INTERVAL '30 days'),
-(2, 2, '阿里-CRM标准版续费升级', 50000.00, NOW() + INTERVAL '30 days', 4, 1, '标准版功能不够用，需增加高级分析能力', '升级至企业版，增加API接口', 1, NOW() - INTERVAL '20 days'),
-(3, 6, '比亚迪-实施服务项目', 90000.00, NOW() + INTERVAL '45 days', 2, 1, '新系统上线需要专业实施团队支持', '全流程实施+培训服务', 1, NOW() - INTERVAL '15 days'),
-(4, 4, '字节跳动-产品咨询', 30000.00, NOW() + INTERVAL '90 days', 1, 1, '团队快速扩张，急需规范化客户管理', '先进行POC测试验证', 1, NOW() - INTERVAL '5 days');
-
--- 10.9 跟进记录示例数据
-INSERT INTO crm_follow_up (id, customer_id, type, content, next_plan, next_plan_date, is_important, creator_id, created_by, created_at) VALUES
-(1, 1, 'visit', '拜访华为CTO王建国，演示CRM企业版功能，客户对数据安全模块很感兴趣', '准备安全架构方案，下周二次演示', NOW() + INTERVAL '7 days', TRUE, 1, 1, NOW() - INTERVAL '10 days'),
-(2, 1, 'call', '电话沟通了解具体需求，确认需要对接企业微信', '发送需求确认函', NOW() + INTERVAL '2 days', FALSE, 1, 1, NOW() - INTERVAL '3 days'),
-(3, 2, 'visit', '拜访阿里采购总监李明芳，沟通续费升级方案', '准备对比方案', NOW() + INTERVAL '5 days', TRUE, 1, 1, NOW() - INTERVAL '8 days'),
-(4, 3, 'online', '腾讯张伟在线咨询产品技术细节', '发送技术白皮书', NOW() + INTERVAL '3 days', FALSE, 1, 1, NOW() - INTERVAL '15 days'),
-(5, 6, 'visit', '拜访比亚迪IT总监，现场调研现有系统使用情况', '输出调研报告', NOW() + INTERVAL '14 days', TRUE, 1, 1, NOW() - INTERVAL '30 days');
-
--- 10.10 系统消息示例数据
-INSERT INTO sys_message (receiver_id, channel, title, content, biz_type, is_read, created_by, created_at) VALUES
-(1, 'system', '欢迎使用CRM系统', '感谢您使用CRM系统，请及时完善个人资料。', 'system', TRUE, 1, NOW() - INTERVAL '180 days'),
-(1, 'system', '审批待办提醒', '您有一条报销审批待处理，请前往审批中心处理。', 'approval', FALSE, 1, NOW() - INTERVAL '2 days'),
-(1, 'system', '合同到期提醒', '合同「CRM企业版维护合同」将于30天后到期，请及时处理续签。', 'system', FALSE, 1, NOW() - INTERVAL '1 days'),
-(1, 'system', '商机更新提醒', '商机「华为-CRM企业版采购」已进入方案报价阶段。', 'system', TRUE, 1, NOW() - INTERVAL '7 days'),
-(1, 'system', '系统升级通知', '系统将于本周六凌晨2:00-4:00进行版本升级，届时将暂停服务。', 'system', FALSE, 1, NOW()),
-(1, 'system', '客户生日提醒', '客户「小米科技」张国强的生日即将到来，建议发送祝福邮件。', 'system', FALSE, 1, NOW() + INTERVAL '28 days');
-
--- 10.11 系统公告示例数据
-INSERT INTO sys_notice (id, title, content, notice_type, status, publish_at, created_by, created_at) VALUES
-(1, 'CRM系统正式上线通知', '<p>各位同事，CRM系统已完成开发和测试，正式上线运行。如有问题请联系系统管理员。</p><p><b>主要功能：</b></p><ul><li>客户管理：线索、客户、联系人统一管理</li><li>销售管理：商机看板、跟进记录、报价合同</li><li>商城管理：商品、订单、优惠券</li><li>协同办公：审批管理、服务工单</li></ul>', 1, 1, NOW() - INTERVAL '180 days', 1, NOW() - INTERVAL '180 days'),
-(2, '2024年Q2销售目标公告', '<p>Q2销售目标已下达，请各位销售经理查收。本季度重点开拓华南和华东市场。</p><p>整体目标：签约金额800万，回款600万。</p>', 1, 1, NOW() - INTERVAL '90 days', 1, NOW() - INTERVAL '90 days'),
-(3, '关于启用审批流程的通知', '<p>自下周一起，所有报价单和合同审批需通过线上审批流程提交，纸质审批单将不再受理。</p>', 2, 1, NOW() - INTERVAL '30 days', 1, NOW() - INTERVAL '30 days');
-
--- 10.12 审批流程定义示例
-INSERT INTO coll_approval_define (id, name, biz_type, status, remark, created_by, created_at) VALUES
-(1, '报价审批', 'quotation', 1, '超过标准折扣的报价需审批', 1, NOW() - INTERVAL '60 days'),
-(2, '合同审批', 'contract', 1, '合同签署前需法务及总经理审批', 1, NOW() - INTERVAL '60 days'),
-(3, '费用报销', 'expense', 1, '差旅及日常费用报销', 1, NOW() - INTERVAL '60 days'),
-(4, '退款审批', 'refund', 0, '商城订单退款审核', 1, NOW() - INTERVAL '30 days');
-
-INSERT INTO coll_approval_define_step (define_id, step_id, step_name, approver_type, approver_ids, sort_order) VALUES
-(1, 1, '销售经理审批', 'role', '[2]', 1),
-(1, 2, '财务审批', 'role', '[4]', 2),
-(2, 1, '法务审批', 'user', '[1]', 1),
-(2, 2, '总经理审批', 'user', '[1]', 2),
-(3, 1, '部门经理审批', 'user', '[1]', 1),
-(3, 2, '财务审批', 'role', '[4]', 2),
-(4, 1, '客服审核', 'user', '[1]', 1),
-(4, 2, '财务确认', 'role', '[4]', 2);
-
--- 10.13 审批实例示例数据
-INSERT INTO coll_approval_instance (id, define_id, biz_type, biz_id, form_data, status, applicant_id, applicant_name, created_by, created_at) VALUES
-(1, 3, 'expense', 1, '{"title":"Q2差旅报销","amount":12800.00,"remark":"Q2拜访客户差旅费用","reason":"Q2出差拜访深圳客户产生的交通及住宿费"}', 'approved', 1, '系统管理员', 1, NOW() - INTERVAL '20 days'),
-(2, 3, 'expense', 2, '{"title":"采购办公设备","amount":5600.00,"remark":"申请采购办公桌椅","reason":"部门新增员工需要补充办公设备"}', 'pending', 1, '系统管理员', 1, NOW() - INTERVAL '3 days'),
-(3, 3, 'expense', 3, '{"title":"市场活动费用","amount":25000.00,"remark":"Q2行业展会参展费用","reason":"参加深圳电子展的展位费及物料费"}', 'pending', 1, '系统管理员', 1, NOW() - INTERVAL '1 days'),
-(4, 1, 'quotation', 1, '{"title":"华为企业版报价","amount":150000.00,"remark":"含首年实施服务费"}', 'approved', 1, '系统管理员', 1, NOW() - INTERVAL '15 days');
-
--- 10.14 服务工单示例数据
-INSERT INTO coll_service_ticket (id, ticket_no, customer_id, type, title, description, priority, source, assignee_id, status, created_by, created_at) VALUES
-(1, 'TK-20250001', 1, 'install', 'CRM系统安装部署', '华为采购的CRM企业版需要上门安装部署，请安排工程师对接。', 'urgent', 'manual', 1, 'in_progress', 1, NOW() - INTERVAL '5 days'),
-(2, 'TK-20250002', 2, 'complaint', '系统响应速度慢', '近期系统操作响应缓慢，页面加载时间较长，影响工作效率。', 'high', 'phone', 1, 'assigned', 1, NOW() - INTERVAL '2 days'),
-(3, 'TK-20250003', 3, 'repair', '数据导出功能异常', '导出Excel时部分数据丢失，请求尽快修复。', 'urgent', 'wechat', NULL, 'pending', 1, NOW() - INTERVAL '1 days'),
-(4, 'TK-20250004', 4, 'other', '新增用户权限配置', '需要为三个新员工配置CRM系统权限，附上权限清单。', 'low', 'manual', 1, 'completed', 1, NOW() - INTERVAL '10 days'),
-(5, 'TK-20250005', 6, 'install', '服务器部署支持', '新采购的服务器需要部署CRM系统及数据库环境。', 'medium', 'manual', NULL, 'pending', 1, NOW());
-
--- 10.15 商城商品SKU示例数据
-INSERT INTO mall_sku (product_id, specs, price, stock, sku_code, status, created_by, created_at) VALUES
-(1, '[{"key":"版本","value":"标准版"},{"key":"年限","value":"1年"}]', 50000.00, 100, 'CRM-STD-1Y', 1, 1, NOW()),
-(2, '[{"key":"版本","value":"企业版"},{"key":"年限","value":"1年"}]', 150000.00, 50, 'CRM-ENT-1Y', 1, 1, NOW()),
-(4, '[{"key":"服务类型","value":"实施服务"},{"key":"天数","value":"1天"}]', 3000.00, 999, 'SVC-IMP-1D', 1, 1, NOW()),
-(5, '[{"key":"服务类型","value":"培训服务"},{"key":"天数","value":"1天"}]', 2000.00, 999, 'SVC-TRN-1D', 1, 1, NOW());
-
--- 10.16 跟进日程示例
-INSERT INTO crm_appointment (customer_id, title, description, appointment_date, start_time, end_time, location, type, status, owner_id, created_by, created_at) VALUES
-(1, '华为-方案演示', '向华为CTO演示企业版安全方案', CURRENT_DATE + 3, '10:00:00', '11:30:00', '深圳市南山区华为基地', 'visit', 'pending', 1, 1, NOW()),
-(2, '阿里-合同谈判', '续费合同条款沟通', CURRENT_DATE + 5, '14:00:00', '16:00:00', '杭州市余杭区阿里巴巴西溪园区', 'visit', 'pending', 1, 1, NOW()),
-(6, '比亚迪-调研汇报', '提交实施调研报告', CURRENT_DATE + 7, '09:30:00', '11:00:00', '深圳市坪山区比亚迪总部', 'visit', 'pending', 1, 1, NOW()),
-(4, '阿里-线上沟通', '确认升级需求细节', CURRENT_DATE + 1, '15:00:00', '15:30:00', NULL, 'call', 'pending', 1, 1, NOW());
-
--- 10.17 看板布局示例
-INSERT INTO report_dashboard_layout (user_id, layout) VALUES
-(1, '[{"cardType":"stats","position":1,"width":12,"height":1},{"cardType":"sales_funnel","position":2,"width":6,"height":2},{"cardType":"customer_analysis","position":3,"width":6,"height":2},{"cardType":"lead_trend","position":4,"width":12,"height":2},{"cardType":"recent_follow_up","position":5,"width":6,"height":2},{"cardType":"top_performers","position":6,"width":6,"height":2}]');
-
--- ============================================================================
--- 完成
--- ============================================================================
-
--- ============================================================================
--- 第十一部分：AI 智能体域（ai_*）
--- ============================================================================
 
 -- 启用 pgvector 扩展（需超级用户权限）
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -2334,32 +1865,7 @@ CREATE TABLE IF NOT EXISTS ai_agent_config (
 COMMENT ON COLUMN ai_agent_config.tools_enabled IS '启用的工具列表 ["get_my_customers","get_sales_summary"]';
 COMMENT ON TABLE ai_agent_config IS 'AI Agent 配置表';
 
--- 11.6 默认 Agent 配置
-INSERT INTO ai_agent_config (agent_type, system_prompt, tools_enabled) VALUES
-('customer_service', '你是 CRM 智能客服助手"小C"，基于知识库回答客户问题。\n\n规则：\n1. 只回答知识库范围内的问题，不知道就说"这个问题我需要转接人工客服"\n2. 回答要简洁、友好、专业\n3. 涉及订单/售后问题时，引导用户提供订单号\n4. 不能透露任何公司内部信息\n5. 不能编造商品信息或政策条款', '[]'),
-('sales_assistant', '你是 CRM 销售助手，帮助销售人员分析客户和业绩。\n\n你可以：\n1. 查询你负责的客户列表和详情\n2. 分析你的销售业绩和趋势\n3. 分析产品销量情况\n4. 给出客户跟进建议和拓客策略\n\n规则：\n1. 数据回答要有具体数字支撑\n2. 分析结果要给出可操作的建议\n3. 可以对比历史数据说明趋势\n4. 涉及客户隐私时注意数据脱敏', '["get_my_customers","get_my_sales_summary","get_product_ranking","get_customer_analysis","get_pipeline_analysis"]'),
-('butler', '你是企业管理智能助手，帮助管理者掌握公司运营全貌。\n\n你可以：\n1. 分析公司整体销售业绩和趋势\n2. 分析各部门/团队绩效\n3. 分析产品线和客户结构\n4. 生成经营分析报告\n\n规则：\n1. 数据必须准确，注明数据截止时间\n2. 分析要有同比/环比对比\n3. 发现问题时要指出具体原因和改进建议', '["get_company_overview","get_sales_trend","get_department_performance","get_customer_structure","get_product_analysis"]');
 
--- 11.7 AI 相关菜单（父菜单ID=31，按钮从 1197 开始）
-INSERT INTO sys_menu (id, parent_id, name, menu_type, route_path, component, sort_order, status) VALUES
-(32, 0, '智能AI', 'M', '/ai', 'Layout', 60, 1),
-(33, 32, '销售助手', 'C', '/ai/sales-assistant', 'ai/sales-assistant/index', 1, 1),
-(34, 32, '智能管家', 'C', '/ai/butler', 'ai/butler/index', 2, 1),
-(35, 32, '知识库管理', 'C', '/ai/knowledge-base', 'ai/knowledge-base/index', 3, 1);
-
-INSERT INTO sys_menu (id, parent_id, name, menu_type, permission_code, sort_order, status) VALUES
-(1197, 33, '销售助手聊天', 'F', 'ai:assistant:chat', 1, 1),
-(1198, 34, '智能管家聊天', 'F', 'ai:butler:chat', 2, 1),
-(1199, 35, '知识库列表', 'F', 'ai:knowledge:list', 1, 1),
-(1200, 35, '新增知识库', 'F', 'ai:knowledge:create', 2, 1),
-(1201, 35, '编辑知识库', 'F', 'ai:knowledge:edit', 3, 1),
-(1202, 35, '删除知识库', 'F', 'ai:knowledge:delete', 4, 1);
-
--- 绑定 AI 权限到管理员角色
-INSERT INTO sys_role_menu (role_id, menu_id) VALUES
-(1, 32), (1, 33), (1, 34), (1, 35),
-(1, 1197), (1, 1198), (1, 1199), (1, 1200), (1, 1201), (1, 1202);
-
--- ============================================================================
+-- ====================================================================
 -- 完成
--- ============================================================================
+-- ====================================================================

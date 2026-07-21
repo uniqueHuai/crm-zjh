@@ -3,7 +3,7 @@
     <!-- 个人信息卡片 -->
     <div class="card profile-header-card">
       <div class="profile-avatar-section">
-        <el-avatar :size="80" :icon="UserFilled" :src="userInfo.avatar" class="profile-avatar" />
+        <ImageUpload v-model="userInfo.avatar" :size="80" class="avatar-upload" />
         <div class="profile-name-section">
           <h2 class="profile-name">{{ userInfo.realName || userInfo.username }}</h2>
           <span class="profile-role">{{ userInfo.roles?.join('、') || '普通用户' }}</span>
@@ -62,15 +62,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { UserFilled, Lock } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import { Lock } from '@element-plus/icons-vue'
 import { getUserInfoApi } from '@/api/modules/auth'
+import { updateUser } from '@/api/modules/system/user'
+import { ImageUpload } from '@/components/common'
 import ChangePasswordDialog from './components/ChangePasswordDialog.vue'
 
 const loading = ref(false)
 const passwordVisible = ref(false)
 
 const userInfo = reactive({
+  userId: 0,
   username: '',
   realName: '',
   avatar: '',
@@ -93,14 +97,22 @@ async function fetchProfile() {
       Object.assign(userInfo, res.data)
     }
   } catch { /* handled by interceptor */ }
-  finally { loading.value = false }
-}
+})
+
+// avatar 变化时自动保存到后端
+watch(() => userInfo.avatar, async (newVal) => {
+  if (!newVal || !userInfo.userId) return
+  try {
+    await updateUser(userInfo.userId, { avatar: newVal })
+  } catch {
+    ElMessage.error('头像保存失败')
+  }
+})
 
 onMounted(fetchProfile)
 </script>
 
 <style scoped lang="scss">
-
 .profile-header-card {
   margin-bottom: 20px;
   .profile-avatar-section {
@@ -108,15 +120,19 @@ onMounted(fetchProfile)
     align-items: center;
     gap: 20px;
   }
-  .profile-avatar {
-    flex-shrink: 0;
+  .avatar-upload :deep(.upload-container) {
     border: 3px solid var(--el-color-primary-light-5);
+    border-radius: 50% !important;
+  }
+  .avatar-upload :deep(.preview-img) {
+    border-radius: 50%;
   }
   .profile-name-section {
     h2 { margin: 0 0 4px; font-size: 22px; color: var(--crm-text-primary); }
     .profile-role { font-size: 13px; color: var(--crm-text-secondary); }
   }
 }
+
 
 .card {
   background: var(--crm-bg-white);

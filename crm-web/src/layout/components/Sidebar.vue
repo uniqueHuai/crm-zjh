@@ -17,23 +17,19 @@
         @open="handleMenuOpen"
         @close="handleMenuClose"
       >
-        <template v-for="menu in menuItems" :key="menu.index">
-          <el-menu-item v-if="!menu.children" :index="menu.index">
-            <el-icon><component :is="menu.icon" /></el-icon>
-            <template #title>{{ menu.title }}</template>
-          </el-menu-item>
-          <el-sub-menu v-else :index="menu.index">
+        <el-menu-item index="/dashboard">
+          <el-icon><Odometer /></el-icon>
+          <template #title>工作台</template>
+        </el-menu-item>
+        <template v-for="menu in menuTree" :key="menu.id">
+          <el-sub-menu v-if="menu.children?.length" :index="menu.routePath!">
             <template #title>
-              <el-icon><component :is="menu.icon" /></el-icon>
-              <span>{{ menu.title }}</span>
+              <el-icon><component :is="menu.icon || 'Menu'" /></el-icon>
+              <span>{{ menu.name }}</span>
             </template>
-            <el-menu-item
-              v-for="child in menu.children"
-              :key="child.index"
-              :index="child.index"
-            >
+            <el-menu-item v-for="child in menu.children" :key="child.id" :index="child.routePath!">
               <el-icon><component :is="child.icon || 'Menu'" /></el-icon>
-              <template #title>{{ child.title }}</template>
+              <template #title>{{ child.name }}</template>
             </el-menu-item>
           </el-sub-menu>
         </template>
@@ -43,13 +39,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import {
-  Coin, Odometer, User, TrendCharts, Setting,
-  Tickets, Files, ShoppingCart, ChatDotSquare, DataAnalysis, Menu as MenuIcon,
-  MagicStick, Promotion,
-} from '@element-plus/icons-vue'
+import { Coin, Odometer, Menu as MenuIcon } from '@element-plus/icons-vue'
+import { getMenuTree } from '@/api/modules/system/menu'
+import type { SysMenuNode } from '@/api/modules/system/menu'
 
 defineProps<{ collapsed: boolean }>()
 
@@ -59,6 +53,7 @@ const STORAGE_KEY = 'sidebar-opened-menus'
 const openedMenus = ref<string[]>(
   JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
 )
+const menuTree = ref<SysMenuNode[]>([])
 
 function handleMenuOpen(index: string) {
   if (!openedMenus.value.includes(index)) {
@@ -72,80 +67,22 @@ function handleMenuClose(index: string) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(openedMenus.value))
 }
 
-interface MenuItem {
-  index: string
-  title: string
-  icon: any
-  children?: { index: string; title: string; icon?: any }[]
-}
-
-const menuItems: MenuItem[] = [
-  { index: '/dashboard', title: '工作台', icon: Odometer },
-  {
-    index: '/customer', title: '客户管理', icon: User,
-    children: [
-      { index: '/customer/lead', title: '线索管理', icon: MenuIcon },
-      { index: '/customer/list', title: '客户列表', icon: MenuIcon },
-      { index: '/customer/contact', title: '联系人管理', icon: MenuIcon },
-      { index: '/customer/tag', title: '标签管理', icon: MenuIcon },
-      { index: '/customer/segment', title: '客户分群', icon: MenuIcon },
-    ],
-  },
-  {
-    index: '/sales', title: '销售管理', icon: TrendCharts,
-    children: [
-      { index: '/sales/pipeline', title: '商机看板', icon: MenuIcon },
-      { index: '/sales/opportunity', title: '商机列表', icon: MenuIcon },
-      { index: '/sales/contract', title: '合同管理', icon: Files },
-      { index: '/sales/quotation', title: '报价管理', icon: Tickets },
-      { index: '/sales/product', title: '产品管理', icon: MenuIcon },
-    ],
-  },
-  {
-    index: '/mall', title: '商城管理', icon: ShoppingCart,
-    children: [
-      { index: '/mall/order', title: '订单管理', icon: MenuIcon },
-      { index: '/mall/coupon', title: '优惠券管理', icon: MenuIcon },
-      { index: '/mall/activity', title: '营销活动', icon: MenuIcon },
-      { index: '/mall/page', title: '小程序页面', icon: MenuIcon },
-    ],
-  },
-  {
-    index: '/collaboration', title: '协同办公', icon: ChatDotSquare,
-    children: [
-      { index: '/collaboration/approval', title: '审批管理', icon: MenuIcon },
-      { index: '/collaboration/ticket', title: '服务工单', icon: MenuIcon },
-    ],
-  },
-  {
-    index: '/report', title: '数据报表', icon: DataAnalysis,
-    children: [
-      { index: '/report/dashboard', title: '报表中心', icon: MenuIcon },
-      { index: '/report/custom', title: '自定义报表', icon: MenuIcon },
-    ],
-  },
-  {
-    index: '/ai', title: '智能AI', icon: MagicStick,
-    children: [
-      { index: '/ai/sales-assistant', title: '销售助手', icon: MenuIcon },
-      { index: '/ai/butler', title: '智能管家', icon: Promotion },
-      { index: '/ai/knowledge-base', title: '知识库管理', icon: MenuIcon },
-    ],
-  },
-  {
-    index: '/system', title: '系统管理', icon: Setting,
-    children: [
-      { index: '/system/user', title: '用户管理', icon: MenuIcon },
-      { index: '/system/role', title: '角色管理', icon: MenuIcon },
-      { index: '/system/menu', title: '菜单管理', icon: MenuIcon },
-      { index: '/system/dept', title: '部门管理', icon: MenuIcon },
-      { index: '/system/dict', title: '字典管理', icon: MenuIcon },
-      { index: '/system/config', title: '参数设置', icon: MenuIcon },
-    ],
-  },
-]
+onMounted(async () => {
+  try {
+    const res = await getMenuTree()
+    const all = res.data?.records || []
+    const roots = all.filter((n: SysMenuNode) => n.menuType === 'M' && n.status === 1)
+    menuTree.value = roots.map((root: SysMenuNode) => ({
+      ...root,
+      children: (root.children || []).filter(
+        (c: SysMenuNode) => c.menuType === 'C' && c.status === 1
+      )
+    }))
+  } catch {
+    // API 不可用时静默降级
+  }
+})
 </script>
-
 <style scoped lang="scss">
 .sidebar {
   position: fixed;

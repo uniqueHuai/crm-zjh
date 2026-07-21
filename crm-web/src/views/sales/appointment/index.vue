@@ -15,11 +15,11 @@
         <div v-if="showSearch" class="search-form">
           <el-form :model="queryParams" inline size="default" @keyup.enter="handleSearch">
             <el-form-item label="关键词"><el-input v-model="queryParams.keywords" placeholder="日程标题/客户" clearable style="width:160px" /></el-form-item>
-            <el-form-item label="类型"><el-select v-model="queryParams.type" placeholder="全部" clearable style="width:110px">
-              <el-option label="会议" value="meeting" /><el-option label="电话" value="call" /><el-option label="演示" value="demo" />
-            </el-select></el-form-item>
             <el-form-item label="状态"><el-select v-model="queryParams.status" placeholder="全部" clearable style="width:110px">
-              <el-option label="待进行" value="pending" /><el-option label="已完成" value="completed" /><el-option label="已取消" value="cancelled" />
+              <el-option label="待拜访" value="scheduled" />
+              <el-option label="已签到" value="checked_in" />
+              <el-option label="已完成" value="completed" />
+              <el-option label="已取消" value="cancelled" />
             </el-select></el-form-item>
             <el-form-item label="日程日期">
               <el-date-picker v-model="queryParams.dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width:220px" value-format="YYYY-MM-DD" />
@@ -50,27 +50,18 @@
         </el-table-column>
         <el-table-column prop="customerName" label="客户名称" width="130" />
         <el-table-column prop="appointmentDate" label="日程日期" width="110" />
-        <el-table-column prop="startTime" label="开始时间" width="90" />
-        <el-table-column prop="endTime" label="结束时间" width="90" />
-        <el-table-column prop="type" label="类型" width="90">
-          <template #default="{row}">
-            <el-tag :type="typeTagType(row.type)" size="small" effect="dark">{{ typeMap[row.type] }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="location" label="地点" width="140">
-          <template #default="{row}">{{ row.location || '-' }}</template>
-        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{row}">
-            <el-tag :type="statusTagType(row.status)" size="small" effect="dark">{{ statusMap[row.status] }}</el-tag>
+            <el-tag :type="statusTagType(row.status)" size="small" effect="dark">{{ statusMap[row.status] || row.status }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="creatorName" label="创建人" width="90" />
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="320" fixed="right">
           <template #default="{row}">
             <el-button link type="primary" size="small" @click="openDialog(row)">编辑</el-button>
-            <el-button v-if="row.status === 'pending'" link type="success" size="small" @click="handleComplete(row)">完成</el-button>
-            <el-button v-if="row.status === 'pending'" link type="warning" size="small" @click="handleCancel(row)">取消</el-button>
+            <el-button v-if="row.status === 'scheduled'" link type="success" size="small" @click="handleCheckIn(row)">签到</el-button>
+            <el-button v-if="row.status === 'checked_in'" link type="primary" size="small" @click="handleComplete(row)">完成</el-button>
+            <el-button v-if="row.status === 'scheduled' || row.status === 'checked_in'" link type="warning" size="small" @click="handleCancel(row)">取消</el-button>
             <el-popconfirm title="确认删除?" @confirm="handleDelete(row)">
               <template #reference><el-button link type="danger" size="small">删除</el-button></template>
             </el-popconfirm>
@@ -85,20 +76,18 @@
 
     <FormDialog v-model:visible="dialogVisible" :title="dialogTitle" @submit="handleSubmit">
       <template #default="{form}">
-        <el-form-item label="日程标题" prop="title" :rules="[{required:true,message:'请输入日程标题'}]"><el-input v-model="form.title" /></el-form-item>
-        <el-row :gutter="16">
-          <el-col :span="12"><el-form-item label="客户名称" prop="customerName"><el-input v-model="form.customerName" /></el-form-item></el-col>
-          <el-col :span="12"><el-form-item label="类型" prop="type"><el-select v-model="form.type" style="width:100%"><el-option label="会议" value="meeting" /><el-option label="电话" value="call" /><el-option label="演示" value="demo" /></el-select></el-form-item></el-col>
-        </el-row>
-        <el-row :gutter="16">
-          <el-col :span="12"><el-form-item label="日程日期" prop="appointmentDate"><el-date-picker v-model="form.appointmentDate" type="date" style="width:100%" value-format="YYYY-MM-DD" /></el-form-item></el-col>
-          <el-col :span="12"><el-form-item label="地点" prop="location"><el-input v-model="form.location" /></el-form-item></el-col>
-        </el-row>
-        <el-row :gutter="16">
-          <el-col :span="12"><el-form-item label="开始时间" prop="startTime"><el-time-picker v-model="form.startTime" style="width:100%" value-format="HH:mm" /></el-form-item></el-col>
-          <el-col :span="12"><el-form-item label="结束时间" prop="endTime"><el-time-picker v-model="form.endTime" style="width:100%" value-format="HH:mm" /></el-form-item></el-col>
-        </el-row>
-        <el-form-item label="备注" prop="remark"><el-input v-model="form.remark" type="textarea" :rows="2" /></el-form-item>
+        <el-form-item label="日程标题" prop="title" :rules="[{required:true,message:'请输入日程标题'}]"><el-input v-model="form.title" placeholder="日程标题" /></el-form-item>
+        <el-form-item label="客户" prop="customerId" :rules="[{required:true,message:'请选择客户'}]">
+          <el-select v-model="form.customerId" filterable style="width:100%">
+            <el-option v-for="c in customerOptions" :key="c.id" :label="c.name" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="日程日期" prop="appointmentDate" :rules="[{required:true,message:'请选择日程日期'}]">
+          <el-date-picker v-model="form.appointmentDate" type="datetime" style="width:100%" value-format="YYYY-MM-DD HH:mm:ss" placeholder="选择日期时间" />
+        </el-form-item>
+        <el-form-item label="地点" prop="location"><el-input v-model="form.location" placeholder="日程地点" /></el-form-item>
+        <el-form-item label="描述" prop="description"><el-input v-model="form.description" type="textarea" :rows="2" placeholder="日程描述" /></el-form-item>
+        <el-form-item label="备注" prop="remark"><el-input v-model="form.remark" type="textarea" :rows="2" placeholder="备注信息" /></el-form-item>
       </template>
     </FormDialog>
   </div>
@@ -109,105 +98,180 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus, Refresh } from '@element-plus/icons-vue'
 import { FormDialog } from '@/components/common'
+import {
+  getAppointmentPage,
+  createAppointment,
+  updateAppointment,
+  deleteAppointment,
+  checkInAppointment,
+  completeAppointment,
+  updateAppointmentStatus,
+} from '@/api/modules/sales'
+import type { Appointment } from '@/api/modules/sales'
+import { getCustomerPage, type Customer } from '@/api/modules/customer'
 
-interface Appointment {
-  id: number
-  title: string
-  customerName: string
-  appointmentDate: string
-  startTime: string
-  endTime: string
-  type: string
-  location?: string
-  status: string
-  creatorName: string
+interface AppointmentRecord extends Appointment {
+  customerName?: string
+  creatorName?: string
   remark?: string
+  cancelReason?: string
+  location?: string
 }
 
-const typeMap: Record<string, string> = { meeting: '会议', call: '电话', demo: '演示' }
-const statusMap: Record<string, string> = { pending: '待进行', completed: '已完成', cancelled: '已取消' }
-
-function typeTagType(type: string) {
-  const map: Record<string, string> = { meeting: 'primary', call: 'success', demo: 'warning' }
-  return map[type] || 'info'
+const statusMap: Record<string, string> = {
+  scheduled: '待拜访',
+  checked_in: '已签到',
+  completed: '已完成',
+  cancelled: '已取消',
 }
+
 function statusTagType(status: string) {
-  const map: Record<string, string> = { pending: 'info', completed: 'success', cancelled: 'danger' }
+  const map: Record<string, string> = {
+    scheduled: 'primary',
+    checked_in: 'success',
+    completed: 'info',
+    cancelled: 'danger',
+  }
   return map[status] || 'info'
 }
 
 const loading = ref(false)
-const appointmentList = ref<Appointment[]>([])
+const appointmentList = ref<AppointmentRecord[]>([])
 const total = ref(0)
 const showSearch = ref(true)
 const dialogVisible = ref(false)
-const editingRow = ref<Appointment | null>(null)
+const editingRow = ref<AppointmentRecord | null>(null)
+const customerOptions = ref<{ id: number; name: string }[]>([])
 
 const queryParams = reactive({
-  page: 1, size: 20, keywords: '',
-  type: undefined as string | undefined,
+  page: 1,
+  size: 20,
+  keywords: '',
   status: undefined as string | undefined,
   dateRange: undefined as string[] | undefined,
 })
 
-const dialogTitle = computed(() => editingRow.value ? '编辑日程' : '新增日程')
+const dialogTitle = computed(() => (editingRow.value ? '编辑日程' : '新增日程'))
 
-const mockData: Appointment[] = [
-  { id: 1, title: '华为CRM需求沟通会', customerName: '华为技术', appointmentDate: '2026-06-03', startTime: '09:00', endTime: '11:00', type: 'meeting', location: '华为总部3楼会议室', status: 'pending', creatorName: '张销售' },
-  { id: 2, title: '阿里云合同续签电话沟通', customerName: '阿里巴巴', appointmentDate: '2026-06-01', startTime: '14:00', endTime: '14:30', type: 'call', location: '', status: 'pending', creatorName: '张销售' },
-  { id: 3, title: '腾讯数据中台产品演示', customerName: '腾讯科技', appointmentDate: '2026-06-05', startTime: '10:00', endTime: '12:00', type: 'demo', location: '线上腾讯会议', status: 'pending', creatorName: '李销售' },
-  { id: 4, title: '字节跳动选型交流会', customerName: '字节跳动', appointmentDate: '2026-05-25', startTime: '14:00', endTime: '16:00', type: 'meeting', location: '字节跳动北京总部', status: 'completed', creatorName: '李销售', remark: '已顺利完成交流' },
-  { id: 5, title: '小米智能硬件演示', customerName: '小米科技', appointmentDate: '2026-06-05', startTime: '15:00', endTime: '17:00', type: 'demo', location: '小米科技园', status: 'pending', creatorName: '王销售' },
-  { id: 6, title: '比亚迪系统使用回访', customerName: '比亚迪', appointmentDate: '2026-05-23', startTime: '10:30', endTime: '11:00', type: 'call', location: '', status: 'cancelled', creatorName: '张销售', remark: '客户临时有事改期' },
-]
+function handleSearch() {
+  queryParams.page = 1
+  fetchData()
+}
 
-function handleSearch() { queryParams.page = 1; fetchData() }
-function handleReset() { Object.assign(queryParams, { keywords: '', type: undefined, status: undefined, dateRange: undefined, page: 1 }); fetchData() }
-function openDialog(row?: Appointment) {
+function handleReset() {
+  Object.assign(queryParams, {
+    keywords: '',
+    status: undefined,
+    dateRange: undefined,
+    page: 1,
+  })
+  fetchData()
+}
+
+function openDialog(row?: AppointmentRecord) {
   editingRow.value = row || null
   dialogVisible.value = true
 }
-function handleSubmit(formData: any, done: () => void) {
-  ElMessage.success(editingRow.value ? '修改成功' : '新增成功')
-  done()
-  fetchData()
+
+async function handleSubmit(formData: any, done: () => void) {
+  try {
+    if (editingRow.value) {
+      await updateAppointment(editingRow.value.id!, formData)
+    } else {
+      await createAppointment({ ...formData, type: 'visit' })
+    }
+    ElMessage.success(editingRow.value ? '修改成功' : '新增成功')
+    done()
+    fetchData()
+  } catch {
+    done()
+  }
 }
-function handleComplete(row: Appointment) {
-  ElMessageBox.confirm(`确认完成日程「${row.title}」？`, '提示', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'info' })
-    .then(() => { ElMessage.success('日程已标记为完成'); fetchData() })
-    .catch(() => {})
+
+async function handleCheckIn(row: AppointmentRecord) {
+  try {
+    await checkInAppointment(row.id!, {
+      longitude: 0,
+      latitude: 0,
+      address: row.location || '',
+    })
+    ElMessage.success('签到成功')
+    fetchData()
+  } catch {
+    /* handled by interceptor */
+  }
 }
-function handleCancel(row: Appointment) {
-  ElMessageBox.confirm(`确认取消日程「${row.title}」？`, '提示', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
-    .then(() => { ElMessage.success('日程已取消'); fetchData() })
-    .catch(() => {})
+
+async function handleComplete(row: AppointmentRecord) {
+  try {
+    await ElMessageBox.confirm(`确认完成日程「${row.title}」？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'info',
+    })
+    await completeAppointment(row.id!, { summary: '已完成拜访' })
+    ElMessage.success('日程已完成')
+    fetchData()
+  } catch {
+    /* cancelled or error */
+  }
 }
-function handleDelete(row: Appointment) {
-  ElMessage.success(`已删除日程「${row.title}」`)
-  fetchData()
+
+async function handleCancel(row: AppointmentRecord) {
+  try {
+    await ElMessageBox.confirm(`确认取消日程「${row.title}」？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+    await updateAppointmentStatus(row.id!, 'cancelled')
+    ElMessage.success('日程已取消')
+    fetchData()
+  } catch {
+    /* cancelled or error */
+  }
+}
+
+async function handleDelete(row: AppointmentRecord) {
+  try {
+    await deleteAppointment(row.id!)
+    ElMessage.success(`已删除日程「${row.title}」`)
+    fetchData()
+  } catch {
+    /* handled by interceptor */
+  }
 }
 
 async function fetchData() {
   loading.value = true
   try {
-    await new Promise(r => setTimeout(r, 300))
-    let list = [...mockData]
-    if (queryParams.keywords) {
-      const kw = queryParams.keywords!
-      list = list.filter(i => i.title.includes(kw) || i.customerName.includes(kw))
+    const params: Record<string, any> = {
+      page: queryParams.page,
+      size: queryParams.size,
     }
-    if (queryParams.type) list = list.filter(i => i.type === queryParams.type)
-    if (queryParams.status) list = list.filter(i => i.status === queryParams.status)
+    if (queryParams.keywords) params.keywords = queryParams.keywords
+    if (queryParams.status) params.status = queryParams.status
     if (queryParams.dateRange && queryParams.dateRange.length === 2) {
-      const [start, end] = queryParams.dateRange
-      list = list.filter(i => i.appointmentDate >= start && i.appointmentDate <= end)
+      params.startDate = queryParams.dateRange[0]
+      params.endDate = queryParams.dateRange[1]
     }
-    appointmentList.value = list
-    total.value = list.length
-  } finally { loading.value = false }
+    const res = await getAppointmentPage(params as any)
+    appointmentList.value = (res.data.records || []) as AppointmentRecord[]
+    total.value = Number(res.data.total ?? 0)
+  } finally {
+    loading.value = false
+  }
 }
 
-onMounted(fetchData)
+onMounted(() => {
+  fetchData()
+  getCustomerPage({ page: 1, size: 999 }).then((res) => {
+    customerOptions.value = (res.data?.records || []).map((c: Customer) => ({
+      id: c.id,
+      name: c.name,
+    }))
+  })
+})
 </script>
 
 <style scoped lang="scss">
